@@ -4,6 +4,8 @@
 
 DuoFlow 双仓库发布版本暂定 v0.01。主仓库 duoflow-platform 保留 common-platform 层；duoflow-module-kit 独立携带协议、抽取自真实平台的纯校验器、模板、SDK 和 duoflow-module Skill。套件使用固定 business-observer 提交开展业务建模与持续同步，公开能力与状态建立显式映射；联合检查不能替代真实平台验收。Node 源码采集和完整内部图需要项目实际适配，尚无通用跨模块执行器。发布版号与内部实现/协议版本分别记录，源码阅读指南和产品介绍页随包提供。
 
+模板命令从主框架 common-platform 或独立套件根运行。远程适配的 module-kit.json 包含 registration 1.0，并提供注册声明、对应 SDK 与主动握手接口；七项接入检查全部通过才可发布。Observer 变更基线使用 change_sync，源码扫描使用 bo_sync scan；联合检查使用的需求、模型和验收材料须与公开映射对应。
+
 请作为负责交付的工程开发者，按照下面的需求和末尾契约，为统一平台开发或改造一个业务模块。目标是让同一组实际功能同时进入固定页面和统一对话，能够执行、追踪结果、按权限使用。不要只提出方案，也不要把模拟演示称为已经接入。
 
 适用平台版本：{{PLATFORM_VERSION}}

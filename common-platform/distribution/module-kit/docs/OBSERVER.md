@@ -47,8 +47,10 @@ python scripts/observer_bridge.py mapping --module work/example-text
 python scripts/observer_bridge.py gate --source work/observer --module work/example-text
 ```
 
-mapping 检查文件、公开能力和状态关联；gate 先核验上游来源，再运行模块检查、需求/检查关联、change_sync 和 architecture_guard。缺少模型、同步配置、实际证据或上游检查失败时，gate 返回失败。错误只输出稳定分类，详细业务调试在模块自身检查中进行。
+mapping 检查文件、公开能力和状态关联；gate 先核验上游来源和同步材料，再运行模块检查、需求/检查关联、change_sync 和 architecture_guard。缺少模型、同步配置、实际证据或上游检查失败时，gate 返回失败。错误只输出稳定分类，详细业务调试在模块自身检查中进行。
 
-持续开发按上游 SKILL.md 执行 begin → scan → inspect → verify → accept → check；已有活跃变更继续原基线。将本映射、生成器、Skill 和检查配置也纳入项目维护范围。源码移动保留节点身份并提供显式迁移。
+同步材料必须对应同一组文件：sync.json 的 model 指向映射中的 model，或已声明的 project；acceptance 和 discovery 指向映射中的对应文件；模型内的 intent 指向映射中的 intent。使用 project 时，其内嵌 model 必须与生成的模型相同。路径可采用等价写法，但另一份内容相同的文件也需要重新绑定和验收，避免将其他材料的通过记录用于当前模块。
+
+持续开发按上游 SKILL.md 执行 `change_sync begin` → 修改业务 → `bo_sync scan` → `change_sync inspect` → `change_sync verify` → `change_sync accept` → `change_sync check`；已有活跃变更继续原基线。扫描入口是 bo_sync，其余变更检查由 change_sync 执行。将本映射、生成器、Skill 和检查配置也纳入项目维护范围。源码移动保留节点身份并提供显式迁移。
 
 源码扫描使用上游 Python、JS/TS、React、Vue 适配器。Node 模块须提供显式状态/调用采集和独立用例；静态候选不代表实际调用。观测记录与页面不参与正式业务裁决；失效、关闭和丢失采集场景分别验证。

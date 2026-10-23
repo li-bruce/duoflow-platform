@@ -16,7 +16,7 @@ Python 工具在 backend/business.py 实现业务，backend/handlers.py 接入�
 
 ## 4. 连续维护和测试
 
-按 docs/OBSERVER.md 安装支持文件并维护映射。每轮运行上游 change_sync 的 begin、scan、inspect、verify、accept、check。正常与拒绝场景独立定义，实际读存储和函数结果；关闭或故障观测时核对业务结果。
+按 docs/OBSERVER.md 安装支持文件并维护映射。每轮先运行 `change_sync begin`，完成修改后运行 `bo_sync scan`，再依次运行 `change_sync inspect`、`change_sync verify`、`change_sync accept` 和 `change_sync check`。扫描与变更检查是两个独立工具，具体参数以固定版本的上游说明为准。正常与拒绝场景独立定义，实际读存储和函数结果；关闭或故障观测时核对业务结果。
 
 从套件根运行 `python scripts/module_kit.py check <模块目录>`。Python 模板运行 `python <模块目录>/tests/self_test.py`；Node 模板在自身根运行 `node --test tests/workflow.test.mjs`。这些合成测试与平台的真实授权联调分别记录。
 

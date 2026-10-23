@@ -9,7 +9,7 @@
 | duoflow_validation/ | 平台纯校验逻辑的发布副本 | register、validate_definition、validate_registration |
 | templates/module-kit/blueprints/ | 两种可运行模板 | business、handlers/server、共享前端 |
 | templates/module-kit/sdk/ | Python/Node 可携带 SDK | 身份授权边界、真实函数表、请求与回执 |
-| scripts/observer_bridge.py | 固定 Observer 来源、支持文件和联合检查 | source_check、init、check_mapping、gate |
+| scripts/observer_bridge.py | 固定 Observer 来源、支持文件和联合检查 | source_check、init、check_mapping、check_sync_inputs、gate |
 | skills/duoflow-module/ | 开发工作流与材料入口 | 业务确认、实现、持续同步和交付 |
 | tests/ | 独立生成与错误声明回归 | 缺失映射、未知引用、观察器缺项等负例 |
 | docs/ | 功能、用法与产品介绍 | index.html 与 demo.html 分开 |

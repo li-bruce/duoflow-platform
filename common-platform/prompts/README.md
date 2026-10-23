@@ -16,7 +16,7 @@
 
 本轮已加入独立 access v1：模块定义权限、带范围的角色模板及办理视图，平台管理真实用户授权，模块根据仓储事实检查对象范围与正式状态。两份提示词均导出 `contracts/access/v1`、管理/业务中心路由、合成权限附件与单独授权示例，以及 `templates/remote-access-client` 的 Node 中央决策客户端。原 manifest/invoke 和 actor JSON 保持不变，新角色不添加到固定身份枚举。
 
-“我的业务”通过 flow provider 实时读取授权对象，并恢复本人私人流程；当前 workitem_sources 是注册元数据，不是自动执行引擎。Python 使用 `ctx.access`，Node 等远端使用 `X-Platform-Access` 短时票据请求中央判断。未注册 access 的旧模板仍是固定角色示例；有状态模块应另外交付正式对象适配、权限包和职责流程，不能仅复制只读样例就声称完成业务集成。远程接入顺序为发现禁用、安装需要的流程/组件、注册权限、启用、授权。
+“我的业务”通过 flow provider 实时读取授权对象，并恢复本人私人流程；当前 workitem_sources 是注册元数据，不是自动执行引擎。Python 使用 `ctx.access`，Node 等远端使用 `X-Platform-Access` 短时票据请求中央判断。未注册 access 的旧模板仍是固定角色示例；有状态模块应另外交付正式对象适配、权限包和职责流程，不能仅复制只读样例就声称完成业务集成。远程接入顺序为发现禁用、安装需要的流程/组件、注册权限、完成七项接入检查、通过后发布、授予范围权限。
 
 v0.4 主示例使用 manifest 1.2 / invoke 1.1，附带 `contracts/v1.2/` 全部公共 Schema，涵盖完整身份、多角色、文件输入、workspace 结果及 skills。旧 manifest 1.1 / invoke 1.0 模板只在明确的 legacy 附录保留；不能把新清单和旧适配器混用。文档还说明对话恢复、消息位置分支、权限撤销、独立本地 Git 提交与外部 OIDC 尚未实现的边界。
 

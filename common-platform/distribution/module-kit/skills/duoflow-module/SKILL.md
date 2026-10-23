@@ -21,7 +21,7 @@ description: 为 DuoFlow 新建或改造业务模块，使用 business-observer 
 2. 用 `observer_bridge.py init --module <模块> --source <Observer仓库>` 安装固定版本的状态查询、观测和图组件。按 Observer 建立 discovery.json、intent.json、behavior.json、sync.json、独立业务预期、探针和架构归属。复制支持文件不代表业务模型已经完成。
 3. 明确能力输入输出、正式对象、后端状态与事务、实际权限及范围。使用套件 SDK。固定页面和对话引用相同组件与业务对象；个人草稿、正式状态、一次调用状态分别保存。
 4. 将能力和公开状态绑定到业务模型稳定节点，按 docs/OBSERVER.md 维护 duoflow-observer.json。模块内部完整图与平台公开状态图分别保留引用；无法表达的并行或等待语义显式报告，不能直接压平。
-5. 每轮按 Observer 的 begin → scan → inspect → verify → accept → check 更新受影响材料。accept 只在真实检查通过后执行。保持原业务状态裁决者，观察器只读取实际事实。Python、JS/TS、React、Vue 使用固定版本对应的源码适配器；动态回调与状态需要实际采集。原生 bo.fsm/1 仅支持平面子集，复杂并发使用已有执行器的明确适配。
+5. 每轮按 Observer 的 `change_sync begin` → 修改业务 → `bo_sync scan` → `change_sync inspect` → `change_sync verify` → `change_sync accept` → `change_sync check` 更新受影响材料。accept 只在真实检查通过后执行。保持原业务状态裁决者，观察器只读取实际事实。Python、JS/TS、React、Vue 使用固定版本对应的源码适配器；动态回调与状态需要实际采集。原生 bo.fsm/1 仅支持平面子集，复杂并发使用已有执行器的明确适配。
 6. 执行模块静态检查、模板独立测试、observer_bridge gate，再到已授权平台完成安装、真实授权、双向验收和发布。逐步验证页面创建、同事项对话续办、提交、反馈、修改、再提交、完成、刷新及分支，记录真实对象和结果。
 
 ## 完成标准

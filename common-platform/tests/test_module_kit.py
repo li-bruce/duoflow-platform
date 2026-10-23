@@ -46,6 +46,16 @@ spec.loader.exec_module(kit)
 NODE = Path(os.environ.get('NODE_EXE') or shutil.which('node') or 'node')
 
 
+def test_documented_python_remote_metadata_matches_current_contract():
+    """The copyable adaptation example must pass the same version gate as a package."""
+    guide = (ROOT / 'docs/模块模板使用手册.md').read_text(encoding='utf-8')
+    examples = [json.loads(body) for body in re.findall(r'```json\s*\n(.*?)\n```', guide, re.S)]
+    metadata = next(item for item in examples if item.get('template') == 'workflow-python-remote')
+    assert metadata['kit_version'] == kit.KIT_VERSION
+    assert metadata['contracts'] == kit.CONTRACTS
+    assert (metadata['kind'], metadata['runtime']) == kit.ADAPTATIONS[metadata['template']]
+
+
 def write_json(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 

@@ -70,7 +70,9 @@ def init(module, source):
         "--viewer",
         "static/graph",
     ]
-    subprocess.run(command, check=True, capture_output=True, text=True, encoding="utf-8")
+    subprocess.run(
+        command, check=True, capture_output=True, text=True, encoding="utf-8"
+    )
     return {
         "status": "initialized",
         "business_model": "required",
@@ -81,7 +83,15 @@ def init(module, source):
 def check_mapping(module, mapping):
     """Require coverage of public capabilities and declared business states."""
     definition = read(inside(module, mapping))
-    required = {"version", "discovery", "intent", "model", "acceptance", "capabilities", "states"}
+    required = {
+        "version",
+        "discovery",
+        "intent",
+        "model",
+        "acceptance",
+        "capabilities",
+        "states",
+    }
     if (
         not required <= set(definition)
         or set(definition) - required - {"project"}
@@ -94,14 +104,18 @@ def check_mapping(module, mapping):
     if definition.get("project"):
         project = read(inside(module, definition["project"]))
         if project.get("protocol") != "bo-project/v1" or project.get("model") != model:
-            raise ValueError("The generated model differs from its canonical Observer project")
+            raise ValueError(
+                "The generated model differs from its canonical Observer project"
+            )
     if model.get("schema_version") != 3:
         raise ValueError("The active business model must use Observer model v3")
     nodes = {node["id"]: node for node in model["nodes"]}
     manifest = read(module / "backend/manifest.json")
     capabilities = {cap["id"] for cap in manifest["capabilities"]}
     if set(definition["capabilities"]) != capabilities:
-        raise ValueError("Every public capability needs an explicit business-model mapping")
+        raise ValueError(
+            "Every public capability needs an explicit business-model mapping"
+        )
     for references in definition["capabilities"].values():
         if (
             not references
@@ -119,7 +133,9 @@ def check_mapping(module, mapping):
     for flow in flows:
         machine = flow.get("state_machine")
         if not machine:
-            raise ValueError("A newly modeled workflow must declare its business states")
+            raise ValueError(
+                "A newly modeled workflow must declare its business states"
+            )
         states = definition["states"][flow["id"]]
         if set(states) != {state["id"] for state in machine["states"]}:
             raise ValueError("State mapping must cover every public business state")
@@ -128,10 +144,55 @@ def check_mapping(module, mapping):
     return definition
 
 
+def check_sync_inputs(module, definition):
+    """Bind public mappings to the exact files used by change_sync's receipt.
+
+    Upstream reads the model and acceptance from sync.json, the intent from that
+    model, and the optional discovery from sync.json. A project envelope and its
+    explicitly mapped generated model are both supported; an unrelated copy is
+    not interchangeable with the file covered by the accepted candidate.
+    """
+    config = read(inside(module, "sync.json"))
+    if not isinstance(config, dict):
+        raise ValueError("Observer synchronization configuration must be an object")
+
+    def referenced_file(relative):
+        if not isinstance(relative, str) or not relative:
+            raise ValueError("Observer synchronization requires linked project files")
+        return inside(module, relative)
+
+    model_path = referenced_file(definition["model"])
+    allowed_models = {model_path}
+    if definition.get("project"):
+        allowed_models.add(referenced_file(definition["project"]))
+    sync_model_path = referenced_file(config.get("model"))
+    if sync_model_path not in allowed_models:
+        raise ValueError("Observer synchronization uses a different business model")
+    sync_model = read(sync_model_path)
+    if isinstance(sync_model, dict) and sync_model.get("protocol") == "bo-project/v1":
+        sync_model = sync_model.get("model")
+    if not isinstance(sync_model, dict) or sync_model != read(model_path):
+        raise ValueError(
+            "Observer synchronization model differs from the public mapping"
+        )
+
+    actual_inputs = {
+        "intent": sync_model.get("intent"),
+        "acceptance": config.get("acceptance"),
+        "discovery": config.get("discovery"),
+    }
+    for key, relative in actual_inputs.items():
+        if referenced_file(relative) != referenced_file(definition[key]):
+            raise ValueError(
+                "Observer synchronization uses a different " + key + " file"
+            )
+
+
 def gate(module, source, mapping):
     """Run module checks, source checks and the upstream evidence gate together."""
     source_check(source)
     definition = check_mapping(module, mapping)
+    check_sync_inputs(module, definition)
     subprocess.run(
         [sys.executable, str(ROOT / "scripts/module_kit.py"), "check", str(module)],
         check=True,
@@ -183,6 +244,7 @@ def gate(module, source, mapping):
             "module_contract",
             "observer_source",
             "business_mapping",
+            "sync_inputs",
             "requirements",
             "change_sync",
             "architecture",
@@ -218,7 +280,10 @@ def main():
     except Exception as error:
         # Raw subprocess output may contain local paths or application inputs.
         print(
-            json.dumps({"status": "failed", "error_type": type(error).__name__}, ensure_ascii=False)
+            json.dumps(
+                {"status": "failed", "error_type": type(error).__name__},
+                ensure_ascii=False,
+            )
         )
         return 1
 

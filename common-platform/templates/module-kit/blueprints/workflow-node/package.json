@@ -1,0 +1,8 @@
+{
+  "name": "__PACK_NAME__",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {"node": ">=24.0.0"},
+  "scripts": {"test": "node --test tests/workflow.test.mjs", "start": "node backend/server.mjs"}
+}

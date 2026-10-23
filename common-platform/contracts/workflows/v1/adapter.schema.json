@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workflow adapter request or response v1.0",
+  "description": "Fixed administered-service endpoints only. JSON operation whitelist: objects.list, objects.read, objects.detail, uploads.create, uploads.status, uploads.complete, uploads.abort, jobs.status, jobs.result, jobs.cancel. List/detail use 1..50 items (default 20) and opaque cursors. Response data budgets: list 128 KiB directory summaries, read 1 MiB selected projection, detail 512 KiB page; the overall JSON response and assembled host view budgets remain 2 MiB. Oversized module responses are contract errors, never silent action truncation. Chunk transfer uses raw PUT with a 1 MiB bound. Business authorization is rechecked by the authority service.",
+  "oneOf": [{"$ref": "#/$defs/request"}, {"$ref": "#/$defs/response"}],
+  "$defs": {
+    "cursor": {"type": "string", "minLength": 1, "maxLength": 2048},
+    "next_cursor": {"oneOf": [{"$ref": "#/$defs/cursor"}, {"type": "null"}]},
+    "object_list_input": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "object_type": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,99}$"},
+        "cursor": {"$ref": "#/$defs/cursor"},
+        "limit": {"type": "integer", "minimum": 1, "maximum": 50, "default": 20}
+      }
+    },
+    "object_detail_input": {
+      "type": "object", "additionalProperties": false, "required": ["object_ref", "section"],
+      "properties": {
+        "object_ref": {"$ref": "#/$defs/object_ref"},
+        "section": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,119}$"},
+        "cursor": {"$ref": "#/$defs/cursor"},
+        "limit": {"type": "integer", "minimum": 1, "maximum": 50, "default": 20}
+      }
+    },
+    "object_list_result": {
+      "type": "object", "additionalProperties": false, "required": ["objects", "next_cursor"],
+      "properties": {
+        "objects": {"type": "array", "maxItems": 50, "items": {"$ref": "#/$defs/projection"}},
+        "next_cursor": {"$ref": "#/$defs/next_cursor"}
+      }
+    },
+    "object_detail_result": {
+      "type": "object", "additionalProperties": false, "required": ["object_ref", "revision", "items", "next_cursor", "total"],
+      "properties": {
+        "object_ref": {"$ref": "#/$defs/object_ref"},
+        "revision": {"type": "integer", "minimum": 1},
+        "items": {"type": "array", "maxItems": 50},
+        "next_cursor": {"$ref": "#/$defs/next_cursor"},
+        "total": {"type": "integer", "minimum": 0}
+      }
+    },
+    "object_ref": {
+      "type": "object", "additionalProperties": false,
+      "required": ["object_type", "object_id"],
+      "properties": {
+        "object_type": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,99}$"},
+        "object_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$"}
+      }
+    },
+    "actor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "role", "roles", "organization_id", "team_ids", "name", "authorization_revision"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 100},
+        "role": {"type": "string", "minLength": 1, "maxLength": 40},
+        "roles": {"type": "array", "minItems": 1, "maxItems": 20, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 40}},
+        "organization_id": {"type": ["string", "null"], "maxLength": 100},
+        "team_ids": {"type": "array", "maxItems": 100, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 100}},
+        "name": {"type": "string", "minLength": 1, "maxLength": 100},
+        "authorization_revision": {"type": "integer", "minimum": 1}
+      }
+    },
+    "projection": {
+      "type": "object", "additionalProperties": false,
+      "required": ["object_ref", "revision", "state", "data", "allowed_actions", "jobs", "updated_at"],
+      "properties": {
+        "object_ref": {"$ref": "#/$defs/object_ref"},
+        "revision": {"type": "integer", "minimum": 1},
+        "state": {"type": "string", "minLength": 1, "maxLength": 100},
+        "data": {"type": "object"},
+        "allowed_actions": {"type": "array", "uniqueItems": true, "maxItems": 100, "items": {"type": "string", "minLength": 1, "maxLength": 100}},
+        "jobs": {"type": "array", "maxItems": 200, "items": {"type": "object"}},
+        "updated_at": {"type": "string", "minLength": 1, "maxLength": 60}
+      }
+    },
+    "request": {
+      "type": "object", "additionalProperties": false,
+      "required": ["protocol_version", "request_id", "context", "input"],
+      "properties": {
+        "protocol_version": {"const": "1.0"},
+        "request_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+        "context": {"type": "object", "additionalProperties": false, "required": ["actor"], "properties": {"actor": {"$ref": "#/$defs/actor"}}},
+        "input": {"type": "object"}
+      }
+    },
+    "response": {
+      "type": "object", "additionalProperties": false,
+      "required": ["protocol_version", "request_id", "data"],
+      "properties": {
+        "protocol_version": {"const": "1.0"},
+        "request_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+        "data": {"type": "object"}
+      }
+    }
+  }
+}

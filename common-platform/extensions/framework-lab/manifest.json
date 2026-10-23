@@ -1,0 +1,886 @@
+{
+  "id": "framework-lab",
+  "version": "1.0.0",
+  "name": "通用工作项实验室",
+  "description": "不依赖具体业务，用本人工作项验证共享组件、真实状态机、并发修订和跨入口恢复。",
+  "workflow_adapter": "handlers:create",
+  "capabilities": [
+    {
+      "id": "framework-lab.create",
+      "version": "1.0.0",
+      "title": "创建工作项",
+      "description": "仅处理当前登录用户自己的调试工作项；正式状态、修订和权限由后端核验。",
+      "kind": "command",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "body": {
+                "type": "string",
+                "maxLength": 4000
+              }
+            },
+            "required": [
+              "title",
+              "body"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "command"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "projection": {
+            "type": "object",
+            "properties": {
+              "object_ref": {
+                "type": "object",
+                "properties": {
+                  "object_type": {
+                    "const": "framework-lab.item"
+                  },
+                  "object_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "object_type",
+                  "object_id"
+                ],
+                "additionalProperties": false
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "state": {
+                "enum": [
+                  "draft",
+                  "submitted",
+                  "returned",
+                  "completed"
+                ]
+              },
+              "data": {
+                "type": "object"
+              },
+              "allowed_actions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "jobs": {
+                "type": "array"
+              },
+              "updated_at": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "object_ref",
+              "revision",
+              "state",
+              "data",
+              "allowed_actions",
+              "jobs",
+              "updated_at"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "projection"
+        ],
+        "additionalProperties": false
+      },
+      "roles": [
+        "member",
+        "system_admin",
+        "admin"
+      ],
+      "execution": {
+        "mode": "sync",
+        "confirmation": false
+      },
+      "presentation": {
+        "page": {
+          "renderer": "json"
+        },
+        "conversation": {
+          "renderer": "json"
+        }
+      },
+      "handler": "handlers:create_item"
+    },
+    {
+      "id": "framework-lab.edit",
+      "version": "1.0.0",
+      "title": "保存工作项",
+      "description": "仅处理当前登录用户自己的调试工作项；正式状态、修订和权限由后端核验。",
+      "kind": "command",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "body": {
+                "type": "string",
+                "maxLength": 4000
+              }
+            },
+            "required": [
+              "title",
+              "body"
+            ],
+            "additionalProperties": false
+          },
+          "object_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "command",
+          "object_id",
+          "expected_revision"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "projection": {
+            "type": "object",
+            "properties": {
+              "object_ref": {
+                "type": "object",
+                "properties": {
+                  "object_type": {
+                    "const": "framework-lab.item"
+                  },
+                  "object_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "object_type",
+                  "object_id"
+                ],
+                "additionalProperties": false
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "state": {
+                "enum": [
+                  "draft",
+                  "submitted",
+                  "returned",
+                  "completed"
+                ]
+              },
+              "data": {
+                "type": "object"
+              },
+              "allowed_actions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "jobs": {
+                "type": "array"
+              },
+              "updated_at": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "object_ref",
+              "revision",
+              "state",
+              "data",
+              "allowed_actions",
+              "jobs",
+              "updated_at"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "projection"
+        ],
+        "additionalProperties": false
+      },
+      "roles": [
+        "member",
+        "system_admin",
+        "admin"
+      ],
+      "execution": {
+        "mode": "sync",
+        "confirmation": false
+      },
+      "presentation": {
+        "page": {
+          "renderer": "json"
+        },
+        "conversation": {
+          "renderer": "json"
+        }
+      },
+      "handler": "handlers:edit_item"
+    },
+    {
+      "id": "framework-lab.submit",
+      "version": "1.0.0",
+      "title": "提交工作项",
+      "description": "仅处理当前登录用户自己的调试工作项；正式状态、修订和权限由后端核验。",
+      "kind": "command",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "object_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "command",
+          "object_id",
+          "expected_revision"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "projection": {
+            "type": "object",
+            "properties": {
+              "object_ref": {
+                "type": "object",
+                "properties": {
+                  "object_type": {
+                    "const": "framework-lab.item"
+                  },
+                  "object_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "object_type",
+                  "object_id"
+                ],
+                "additionalProperties": false
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "state": {
+                "enum": [
+                  "draft",
+                  "submitted",
+                  "returned",
+                  "completed"
+                ]
+              },
+              "data": {
+                "type": "object"
+              },
+              "allowed_actions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "jobs": {
+                "type": "array"
+              },
+              "updated_at": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "object_ref",
+              "revision",
+              "state",
+              "data",
+              "allowed_actions",
+              "jobs",
+              "updated_at"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "projection"
+        ],
+        "additionalProperties": false
+      },
+      "roles": [
+        "member",
+        "system_admin",
+        "admin"
+      ],
+      "execution": {
+        "mode": "sync",
+        "confirmation": false
+      },
+      "presentation": {
+        "page": {
+          "renderer": "json"
+        },
+        "conversation": {
+          "renderer": "json"
+        }
+      },
+      "handler": "handlers:submit_item"
+    },
+    {
+      "id": "framework-lab.return",
+      "version": "1.0.0",
+      "title": "模拟退回",
+      "description": "仅处理当前登录用户自己的调试工作项；正式状态、修订和权限由后端核验。",
+      "kind": "command",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "object",
+            "properties": {
+              "note": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000
+              }
+            },
+            "required": [
+              "note"
+            ],
+            "additionalProperties": false
+          },
+          "object_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "command",
+          "object_id",
+          "expected_revision"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "projection": {
+            "type": "object",
+            "properties": {
+              "object_ref": {
+                "type": "object",
+                "properties": {
+                  "object_type": {
+                    "const": "framework-lab.item"
+                  },
+                  "object_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "object_type",
+                  "object_id"
+                ],
+                "additionalProperties": false
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "state": {
+                "enum": [
+                  "draft",
+                  "submitted",
+                  "returned",
+                  "completed"
+                ]
+              },
+              "data": {
+                "type": "object"
+              },
+              "allowed_actions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "jobs": {
+                "type": "array"
+              },
+              "updated_at": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "object_ref",
+              "revision",
+              "state",
+              "data",
+              "allowed_actions",
+              "jobs",
+              "updated_at"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "projection"
+        ],
+        "additionalProperties": false
+      },
+      "roles": [
+        "member",
+        "system_admin",
+        "admin"
+      ],
+      "execution": {
+        "mode": "sync",
+        "confirmation": false
+      },
+      "presentation": {
+        "page": {
+          "renderer": "json"
+        },
+        "conversation": {
+          "renderer": "json"
+        }
+      },
+      "handler": "handlers:return_item"
+    },
+    {
+      "id": "framework-lab.complete",
+      "version": "1.0.0",
+      "title": "模拟完成",
+      "description": "仅处理当前登录用户自己的调试工作项；正式状态、修订和权限由后端核验。",
+      "kind": "command",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "object",
+            "properties": {
+              "note": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000
+              }
+            },
+            "required": [
+              "note"
+            ],
+            "additionalProperties": false
+          },
+          "object_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "command",
+          "object_id",
+          "expected_revision"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "projection": {
+            "type": "object",
+            "properties": {
+              "object_ref": {
+                "type": "object",
+                "properties": {
+                  "object_type": {
+                    "const": "framework-lab.item"
+                  },
+                  "object_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "object_type",
+                  "object_id"
+                ],
+                "additionalProperties": false
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "state": {
+                "enum": [
+                  "draft",
+                  "submitted",
+                  "returned",
+                  "completed"
+                ]
+              },
+              "data": {
+                "type": "object"
+              },
+              "allowed_actions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "jobs": {
+                "type": "array"
+              },
+              "updated_at": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "object_ref",
+              "revision",
+              "state",
+              "data",
+              "allowed_actions",
+              "jobs",
+              "updated_at"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "projection"
+        ],
+        "additionalProperties": false
+      },
+      "roles": [
+        "member",
+        "system_admin",
+        "admin"
+      ],
+      "execution": {
+        "mode": "sync",
+        "confirmation": false
+      },
+      "presentation": {
+        "page": {
+          "renderer": "json"
+        },
+        "conversation": {
+          "renderer": "json"
+        }
+      },
+      "handler": "handlers:complete_item"
+    },
+    {
+      "id": "framework-lab.read",
+      "version": "1.0.0",
+      "title": "读取本人工作项",
+      "description": "仅处理当前登录用户自己的调试工作项；正式状态、修订和权限由后端核验。",
+      "kind": "query",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "object_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "object_id"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "projection": {
+            "type": "object",
+            "properties": {
+              "object_ref": {
+                "type": "object",
+                "properties": {
+                  "object_type": {
+                    "const": "framework-lab.item"
+                  },
+                  "object_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "object_type",
+                  "object_id"
+                ],
+                "additionalProperties": false
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "state": {
+                "enum": [
+                  "draft",
+                  "submitted",
+                  "returned",
+                  "completed"
+                ]
+              },
+              "data": {
+                "type": "object"
+              },
+              "allowed_actions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "jobs": {
+                "type": "array"
+              },
+              "updated_at": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "object_ref",
+              "revision",
+              "state",
+              "data",
+              "allowed_actions",
+              "jobs",
+              "updated_at"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "projection"
+        ],
+        "additionalProperties": false
+      },
+      "roles": [
+        "member",
+        "system_admin",
+        "admin"
+      ],
+      "execution": {
+        "mode": "sync",
+        "confirmation": false
+      },
+      "presentation": {
+        "page": {
+          "renderer": "json"
+        },
+        "conversation": {
+          "renderer": "json"
+        }
+      },
+      "handler": "handlers:read_item"
+    },
+    {
+      "id": "framework-lab.list",
+      "version": "1.0.0",
+      "title": "列出本人工作项",
+      "description": "仅处理当前登录用户自己的调试工作项；正式状态、修订和权限由后端核验。",
+      "kind": "query",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "object_type": {
+            "const": "framework-lab.item"
+          },
+          "cursor": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          }
+        },
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "objects": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "type": "object",
+              "properties": {
+                "object_ref": {
+                  "type": "object",
+                  "properties": {
+                    "object_type": {
+                      "const": "framework-lab.item"
+                    },
+                    "object_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "object_type",
+                    "object_id"
+                  ],
+                  "additionalProperties": false
+                },
+                "revision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "state": {
+                  "enum": [
+                    "draft",
+                    "submitted",
+                    "returned",
+                    "completed"
+                  ]
+                },
+                "data": {
+                  "type": "object"
+                },
+                "allowed_actions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "jobs": {
+                  "type": "array"
+                },
+                "updated_at": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "object_ref",
+                "revision",
+                "state",
+                "data",
+                "allowed_actions",
+                "jobs",
+                "updated_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "objects",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "roles": [
+        "member",
+        "system_admin",
+        "admin"
+      ],
+      "execution": {
+        "mode": "sync",
+        "confirmation": false
+      },
+      "presentation": {
+        "page": {
+          "renderer": "json"
+        },
+        "conversation": {
+          "renderer": "json"
+        }
+      },
+      "handler": "handlers:list_items"
+    }
+  ],
+  "surfaces": {
+    "page_tools": [
+      {
+        "id": "work-items",
+        "title": "通用工作项动作",
+        "description": "按契约调用本人调试工作项的能力。日常体验可打开同名流程。",
+        "kind": "form",
+        "capability_ids": [
+          "framework-lab.create",
+          "framework-lab.edit",
+          "framework-lab.submit",
+          "framework-lab.return",
+          "framework-lab.complete",
+          "framework-lab.read",
+          "framework-lab.list"
+        ]
+      }
+    ],
+    "conversation": {
+      "capability_ids": [
+        "framework-lab.create",
+        "framework-lab.edit",
+        "framework-lab.submit",
+        "framework-lab.return",
+        "framework-lab.complete",
+        "framework-lab.read",
+        "framework-lab.list"
+      ],
+      "starter_prompts": [
+        "打开通用工作项实验室"
+      ]
+    }
+  }
+}

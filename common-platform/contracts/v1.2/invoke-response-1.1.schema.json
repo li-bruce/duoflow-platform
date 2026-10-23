@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "protocol_version": {
+      "const": "1.1"
+    },
+    "request_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "capability_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]{2,120}$"
+    },
+    "capability_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 0,
+      "maxLength": 12000
+    },
+    "data": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "protocol_version",
+    "request_id",
+    "capability_id",
+    "capability_version",
+    "summary",
+    "data"
+  ],
+  "additionalProperties": false
+}

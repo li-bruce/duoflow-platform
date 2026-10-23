@@ -1,0 +1,269 @@
+{
+  "registration_version": "1.0",
+  "module_id": "__MODULE_ID__",
+  "module_version": "1.0.0",
+  "permissions": {
+    "mode": "platform_access",
+    "definition": {
+      "contract_version": "1.0",
+      "module_id": "__MODULE_ID__",
+      "version": "1.0.0",
+      "title": "__TITLE__权限",
+      "scope_keys": [
+        "project_id",
+        "organization_id"
+      ],
+      "permissions": [
+        {
+          "id": "__MODULE_ID__.read",
+          "title": "读取记录"
+        },
+        {
+          "id": "__MODULE_ID__.create",
+          "title": "创建记录"
+        },
+        {
+          "id": "__MODULE_ID__.edit",
+          "title": "编辑记录",
+          "guards": [
+            {
+              "type": "actor_is_fact",
+              "fact": "author_id"
+            }
+          ]
+        },
+        {
+          "id": "__MODULE_ID__.submit",
+          "title": "提交审核",
+          "guards": [
+            {
+              "type": "actor_is_fact",
+              "fact": "author_id"
+            }
+          ]
+        },
+        {
+          "id": "__MODULE_ID__.approve",
+          "title": "审核通过",
+          "guards": [
+            {
+              "type": "actor_not_fact",
+              "fact": "author_id"
+            }
+          ]
+        }
+      ],
+      "role_templates": [
+        {
+          "id": "__MODULE_ID__.author",
+          "title": "记录提交者",
+          "permissions": [
+            "__MODULE_ID__.read",
+            "__MODULE_ID__.create",
+            "__MODULE_ID__.edit",
+            "__MODULE_ID__.submit"
+          ],
+          "required_scope": [
+            "project_id",
+            "organization_id"
+          ]
+        },
+        {
+          "id": "__MODULE_ID__.reviewer",
+          "title": "记录审核人",
+          "permissions": [
+            "__MODULE_ID__.read",
+            "__MODULE_ID__.approve"
+          ],
+          "required_scope": [
+            "project_id",
+            "organization_id"
+          ]
+        }
+      ],
+      "command_mappings": [
+        {
+          "capability_id": "__MODULE_ID__.create",
+          "permission": "__MODULE_ID__.create"
+        },
+        {
+          "capability_id": "__MODULE_ID__.edit",
+          "permission": "__MODULE_ID__.edit"
+        },
+        {
+          "capability_id": "__MODULE_ID__.submit",
+          "permission": "__MODULE_ID__.submit"
+        },
+        {
+          "capability_id": "__MODULE_ID__.approve",
+          "permission": "__MODULE_ID__.approve"
+        },
+        {
+          "capability_id": "__MODULE_ID__.read",
+          "permission": "__MODULE_ID__.read"
+        },
+        {
+          "capability_id": "__MODULE_ID__.list",
+          "permission": "__MODULE_ID__.read"
+        }
+      ],
+      "experiences": [
+        {
+          "id": "__MODULE_ID__.author-workspace",
+          "title": "记录填报",
+          "description": "创建、编辑和提交本人的记录，读取授权项目内的协作记录。",
+          "flow_id": "__MODULE_ID__.workflow",
+          "required_permissions": [
+            "__MODULE_ID__.read",
+            "__MODULE_ID__.create"
+          ],
+          "step_ids": [
+            "pick",
+            "edit",
+            "review"
+          ]
+        },
+        {
+          "id": "__MODULE_ID__.review-workspace",
+          "title": "记录审核",
+          "description": "读取授权项目记录，审核其他人提交的记录。",
+          "flow_id": "__MODULE_ID__.workflow",
+          "required_permissions": [
+            "__MODULE_ID__.read",
+            "__MODULE_ID__.approve"
+          ],
+          "step_ids": [
+            "pick",
+            "edit",
+            "review"
+          ]
+        }
+      ],
+      "workitem_sources": [
+        {
+          "id": "__MODULE_ID__.records",
+          "capability_id": "__MODULE_ID__.list",
+          "experience_id": "__MODULE_ID__.review-workspace"
+        }
+      ]
+    }
+  },
+  "data_objects": [
+    {
+      "id": "__MODULE_ID__.record",
+      "title": "项目记录",
+      "description": "模块维护记录内容、正式状态和修订；只通过授权接口读取或修改。",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "object_ref": {
+            "type": "object",
+            "properties": {
+              "object_type": {
+                "type": "string",
+                "const": "__MODULE_ID__.record"
+              },
+              "object_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "required": [
+              "object_type",
+              "object_id"
+            ],
+            "additionalProperties": false
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "submitted",
+              "approved"
+            ]
+          },
+          "data": {
+            "type": "object"
+          },
+          "allowed_actions": {
+            "type": "array",
+            "maxItems": 3,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "edit",
+                "submit",
+                "approve"
+              ]
+            }
+          },
+          "jobs": {
+            "type": "array",
+            "maxItems": 0,
+            "items": {
+              "type": "object"
+            }
+          },
+          "updated_at": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          }
+        },
+        "required": [
+          "object_ref",
+          "revision",
+          "state",
+          "data",
+          "allowed_actions",
+          "jobs",
+          "updated_at"
+        ],
+        "additionalProperties": false
+      },
+      "operations": {
+        "list": "__MODULE_ID__.list",
+        "read": "__MODULE_ID__.read",
+        "create": "__MODULE_ID__.create",
+        "update": "__MODULE_ID__.edit"
+      },
+      "scope_fields": [
+        "organization_id",
+        "project_id"
+      ]
+    }
+  ],
+  "business_chains": [
+    {
+      "id": "__MODULE_ID__.review",
+      "title": "记录审核",
+      "description": "创建、修改、提交后，由另一名有权限的审核人完成审核；步骤声明不自动执行。",
+      "entry_capability": "__MODULE_ID__.create",
+      "steps": [
+        "__MODULE_ID__.create",
+        "__MODULE_ID__.edit",
+        "__MODULE_ID__.submit",
+        "__MODULE_ID__.approve"
+      ]
+    }
+  ],
+  "host_requirements": {
+    "workflows": [
+      {
+        "id": "__MODULE_ID__.workflow",
+        "version": "1.0.0"
+      }
+    ],
+    "interactions": []
+  },
+  "workflow_operations": [
+    "objects.list",
+    "objects.read"
+  ]
+}

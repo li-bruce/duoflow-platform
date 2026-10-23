@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "documents": [
+    {
+      "id": "architecture-core",
+      "title": "通用框架架构与代码地图",
+      "source": "common-platform/docs/通用框架架构与代码地图.md",
+      "audience": "框架维护者、模块开发者与开发 AI"
+    },
+    {
+      "id": "module-debug",
+      "title": "模块开发与调试说明书",
+      "source": "common-platform/docs/模块开发与调试说明书.md",
+      "audience": "框架维护者、模块开发者与开发 AI"
+    },
+    {
+      "id": "migration",
+      "title": "框架迁移与AI交接指南",
+      "source": "common-platform/docs/框架迁移与AI交接指南.md",
+      "audience": "框架维护者、模块开发者与开发 AI"
+    }
+  ]
+}

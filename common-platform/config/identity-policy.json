@@ -1,0 +1,37 @@
+{
+  "version": "0.4.0",
+  "roles": {
+    "member": {
+      "name": "基础使用者",
+      "implies": [],
+      "permissions": [
+        "capabilities.use",
+        "resources.own",
+        "runs.own"
+      ]
+    },
+    "admin": {
+      "name": "旧版演示管理员",
+      "implies": [
+        "member"
+      ],
+      "permissions": [
+        "platform.manage",
+        "identity.manage",
+        "resources.read_all",
+        "resources.review",
+        "runs.read_all",
+        "runs.control_all",
+        "audit.read_all"
+      ]
+    },
+    "system_admin": {
+      "name": "系统管理员",
+      "implies": [],
+      "permissions": [
+        "platform.manage",
+        "identity.manage"
+      ]
+    }
+  }
+}

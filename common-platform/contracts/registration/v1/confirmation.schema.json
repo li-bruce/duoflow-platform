@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "registration_version": {
+      "const": "1.0"
+    },
+    "nonce": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "contract_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "accepted": {
+      "const": true
+    },
+    "checks": {
+      "type": "object",
+      "properties": {
+        "platform_contract": {
+          "const": true
+        },
+        "local_manifest": {
+          "const": true
+        },
+        "local_registration": {
+          "const": true
+        },
+        "handlers": {
+          "const": true
+        },
+        "schemas": {
+          "const": true
+        }
+      },
+      "required": [
+        "platform_contract",
+        "local_manifest",
+        "local_registration",
+        "handlers",
+        "schemas"
+      ],
+      "additionalProperties": false
+    },
+    "capability_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 120,
+        "pattern": "^[a-z][a-z0-9_.-]{2,120}$"
+      },
+      "maxItems": 64,
+      "uniqueItems": true
+    },
+    "workflow_operations": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "objects.list",
+          "objects.read",
+          "objects.detail",
+          "uploads.create",
+          "uploads.status",
+          "uploads.complete",
+          "uploads.abort",
+          "jobs.status",
+          "jobs.result",
+          "jobs.cancel"
+        ]
+      },
+      "maxItems": 16,
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "registration_version",
+    "nonce",
+    "contract_digest",
+    "accepted",
+    "checks",
+    "capability_ids",
+    "workflow_operations"
+  ],
+  "additionalProperties": false
+}

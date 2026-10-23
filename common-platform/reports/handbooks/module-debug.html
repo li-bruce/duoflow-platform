@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>模块开发与调试说明书 · 平台使用说明</title>
+<link rel="stylesheet" href="../handbook-assets/handbook.css"><script src="../handbook-assets/handbook.js" defer></script></head>
+<body><header class="topbar"><a href="index.html" class="brand">平台使用说明</a><nav aria-label="常用入口"><a href="/#business">我的业务</a><a href="/#chat">对话工作台</a><a href="/reports/">其他报告</a></nav></header>
+<div class="layout"><aside class="sidebar"><nav aria-label="说明书列表"><p class="nav-label">说明书</p><a href="architecture-core.html">通用框架架构与代码地图</a><a aria-current="page" href="module-debug.html">模块开发与调试说明书</a><a href="migration.html">框架迁移与AI交接指南</a></nav><nav class="toc" aria-label="本页目录"><p class="nav-label">本页目录</p><a class="level-1" href="#模块开发与调试说明书">模块开发与调试说明书</a><a class="level-2" href="#选择合适的模块形态">选择合适的模块形态</a><a class="level-2" href="#一份模块包包括哪些文件">一份模块包包括哪些文件</a><a class="level-2" href="#前后端组件怎样配合">前后端组件怎样配合</a><a class="level-2" href="#状态机如何声明和实现">状态机如何声明和实现</a><a class="level-2" href="#调试台怎样使用">调试台怎样使用</a><a class="level-3" href="#注册与绑定">注册与绑定</a><a class="level-3" href="#声明校验">声明校验</a><a class="level-3" href="#真实运行观察">真实运行观察</a><a class="level-2" href="#用框架实验室做一轮完整演练">用框架实验室做一轮完整演练</a><a class="level-2" href="#生成模板与接入-node-js">生成模板与接入 Node.js</a><a class="level-2" href="#ai-开发时的固定工作方式">AI 开发时的固定工作方式</a><a class="level-2" href="#验收时检查什么">验收时检查什么</a></nav></aside><main id="main-content"><div class="document-meta"><span>框架维护者、模块开发者与开发 AI</span><a href="module-debug.md" download>下载 Markdown 原文</a></div><div class="tools" hidden><label for="doc-search">查找本页内容</label><input id="doc-search" type="search" placeholder="例如：登录、对话、测试" autocomplete="off"><button type="button" id="clear-search">清空</button><button type="button" id="expand-all">展开全部</button><button type="button" id="collapse-all">折叠章节</button><span id="search-status" role="status" aria-live="polite"></span></div><noscript><p>已展示完整正文；启用 JavaScript 后可搜索和折叠章节。</p></noscript><article id="doc-content"><h1 id="模块开发与调试说明书">模块开发与调试说明书</h1>
+<p>远程接入现行标准见 <a class="blocked-link" title="此链接未列入说明书发布范围">模块框架说明</a> 和 <a class="blocked-link" title="此链接未列入说明书发布范围">主框架说明</a>：增加公开声明与双向握手，七项检查全部通过后才可发布。离线检查、清单发现和健康检测各有范围，均不能单独证明接入完成。</p>
+<p>模块开发的最小成果是：一套后端业务逻辑、一套共享前端组件、描述它们如何协作的声明，以及能够验证状态和权限的测试。主框架把这些成果组合成固定页面和对话流程。</p>
+<p>初次使用可先<a class="blocked-link" title="此链接未列入说明书发布范围">打开交互式入门指南</a>，用分享会示例体验填写、提交、退回修改和完成，再了解自己的功能需要准备哪些内容。指南是浏览器内练习；本手册所述模块接入与业务验收仍须使用下方实际工作台。</p>
+<p>先<a class="blocked-link" title="此链接未列入说明书发布范围">打开交互式框架全貌</a>，理解主框架、模块共同约定和业务模块的分工，再逐步观察请求与结果、权限、状态、版本和恢复规则。它聚焦框架构造；本手册和模块模板手册提供具体开发操作。页面演示不代替实际安装与联调。</p>
+<p><a href="/#devtools">打开模块调试台</a>，<a href="/#flows">打开固定流程页面</a>，<a href="/#chat">打开对话</a>。调试台需要平台管理权限，实例区只观察当前账号自己的流程。</p>
+<h2 id="选择合适的模块形态">选择合适的模块形态</h2>
+<table>
+<thead>
+<tr>
+<th>形态</th>
+<th>适合什么</th>
+<th>使用方式</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>原生 Python 工具</td>
+<td>一个表单加计算/查询结果</td>
+<td><code>tool-python</code> 模板，随平台运行</td>
+</tr>
+<tr>
+<td>原生 Python 多步骤模块</td>
+<td>需要共享宿主和本地事务的流程</td>
+<td>参考 framework-lab 和 workflow-module 模板</td>
+</tr>
+<tr>
+<td>Node.js HTTP 服务</td>
+<td>独立部署、独立数据仓库的流程</td>
+<td><code>workflow-node</code> 模板，HTTP 接入</td>
+</tr>
+<tr>
+<td>已有 Python/其他语言服务</td>
+<td>已有成熟程序，保留其业务库和算法</td>
+<td>实现 manifest/invoke、对象 adapter、中央授权桥接；交付前端包</td>
+</tr>
+</tbody></table>
+<p>远程服务可以部署在其他机器，但浏览器共享组件仍通过平台受信任构建发布。发现服务、安装前端、注册权限、启用服务、给用户授权是分别进行的步骤。仅配置 URL 不会让一个外部完整页面自动拆解为对话组件。</p>
+<h2 id="一份模块包包括哪些文件">一份模块包包括哪些文件</h2>
+<pre><code class="language-text">module-package/
+  module-kit.json          模板类型及安装描述
+  manifest.json            模块、能力、Web 与对话入口
+  access-definition.json   权限、角色模板、范围与办理视图
+  backend/                 后端业务和接口适配
+  frontend/
+    flow.json              多步骤流程、页面组合、状态机
+    steps.tsx              stepComponents 共享组件
+    interaction.json       可选：独立交互组件声明
+    Component.tsx          可选：独立交互组件实现
+  sdk/                     随模板提供的通用接线
+  tests/                   业务与接入测试
+  README.md                启动、安装、授权、验证说明
+</code></pre>
+<p>简单工具只需要 interaction 形态；多步骤流程使用 workflow。已安装的原生模块会分别放进 <code>extensions/</code> 与 <code>flows/packs/</code>。模块自有数据库和运行文件不属于前端包。</p>
+<h2 id="前后端组件怎样配合">前后端组件怎样配合</h2>
+<p>前端只处理输入、展示和用户交互。SDK 提供 <code>projection</code>（服务端认可的数据）、<code>draft</code>（个人未提交输入）、<code>actions</code>（当前可用动作）和 <code>execute</code> 等方法。页面和对话传入不同的 <code>surface</code>，组件据此调整布局，不另写业务判断。</p>
+<p>后端能力处理实际查询和命令。一次更新至少携带 <code>object_id</code>、<code>expected_revision</code>、<code>command</code>；创建对象和草案查询遵循各自的信封。能力 Schema、流程动作的 command_schema 与后端实现保持一致。不要从客户端传入 <code>owner_id</code> 就认为它是真实归属，应从仓库重新读取。</p>
+<p>对象投影包含 <code>object_ref</code>、<code>revision</code>、<code>state</code>、可显示的 <code>data</code> 和 <code>allowed_actions</code>。后端最终权限检查仍然执行，不能只依赖上一秒返回的 allowed_actions。</p>
+<h2 id="状态机如何声明和实现">状态机如何声明和实现</h2>
+<p>flow 的可选字段 <code>state_machine</code> 描述业务状态。下面是结构示意，ID 必须与实际步骤和动作一致：</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;my-module.lifecycle&quot;,
+  &quot;version&quot;: &quot;1.0.0&quot;,
+  &quot;initial&quot;: &quot;draft&quot;,
+  &quot;states&quot;: [
+    {&quot;id&quot;: &quot;draft&quot;, &quot;title&quot;: &quot;草稿&quot;},
+    {&quot;id&quot;: &quot;submitted&quot;, &quot;title&quot;: &quot;已提交&quot;},
+    {&quot;id&quot;: &quot;completed&quot;, &quot;title&quot;: &quot;已完成&quot;, &quot;terminal&quot;: true}
+  ],
+  &quot;transitions&quot;: [
+    {&quot;id&quot;: &quot;submit&quot;, &quot;from&quot;: &quot;draft&quot;, &quot;to&quot;: &quot;submitted&quot;, &quot;step_id&quot;: &quot;edit&quot;, &quot;action_id&quot;: &quot;submit&quot;, &quot;title&quot;: &quot;提交&quot;},
+    {&quot;id&quot;: &quot;complete&quot;, &quot;from&quot;: &quot;submitted&quot;, &quot;to&quot;: &quot;completed&quot;, &quot;step_id&quot;: &quot;process&quot;, &quot;action_id&quot;: &quot;complete&quot;, &quot;title&quot;: &quot;完成&quot;}
+  ]
+}
+</code></pre>
+<p>声明需要通过 <code>contracts/state-machines/v1/</code> 的 Schema 和语义检查，包括起始状态、重复 ID、转移端点及动作引用。状态机描述模块已有的业务规则；通用宿主不根据 JSON 直接执行任意代码。framework-lab 的后端读取同一份状态定义来限制转移，减少示例图与代码分离的问题。复杂模块可以采用自己的状态引擎，但应输出同样的投影与可视化声明。</p>
+<p>初始“未创建对象”不是业务状态；未绑定对象时图上不应随便点亮 draft。只有创建并读取真实对象后才标记当前状态。</p>
+<h2 id="调试台怎样使用">调试台怎样使用</h2>
+<h3 id="注册与绑定">注册与绑定</h3>
+<p>先查看能力、流程、组件目录，确认模块是否启用、引用版本是否一致、前端包源码是否存在、远程服务是否可用。这里展示声明和绑定关系，不展示服务密钥或模型密钥。</p>
+<p>注册定义有效、源文件安装、前端已构建、服务在线、当前用户有权操作，分别影响最终效果。缺少前端包时应安装并重建 Web；服务离线时应查看服务管理；没有授权时应检查角色模板及实际 grant。</p>
+<h3 id="声明校验">声明校验</h3>
+<p>粘贴 workflow、interaction 或 state_machine JSON 并校验，查看结构错误和引用诊断。校验不会安装模块、执行供应商代码、读取任意文件、请求外网 Schema 或创建业务数据。在线预览还会拒绝需要执行用户自定义正则的 Schema，请在离线安装检查和受控测试中处理这种定义。通过结构校验还需编译、启动与业务验收。</p>
+<h3 id="真实运行观察">真实运行观察</h3>
+<p>选择自己的流程实例，观察业务状态、个人步骤、任务状态、修订号、可执行动作及刷新时间。在同屏正式组件中操作，或另开页面/对话操作；自动刷新读取后端投影并更新图。可以暂停刷新、手动刷新，并查看状态节点说明。</p>
+<p>观察历史只记录调试台读取时见到的状态元数据，并去重，每个实例最多保留 100 条，返回当前对象的观察；它不会保存草稿正文，也不是模块完整的业务事件日志。两次轮询之间瞬间完成的中间状态可能没有记录。需要完整审计时模块应写自己的事务事件，平台另外记录调用审计。</p>
+<p>服务失败、权限撤销或对象不可读时，不继续展示先前缓存的敏感内容。系统管理员不会通过调试台看到其他用户的私有实例。业务权限与调试权限都要满足。</p>
+<h2 id="用框架实验室做一轮完整演练">用框架实验室做一轮完整演练</h2>
+<ol>
+<li>在已安装 framework-lab 的平台登录管理账号，打开调试台，检查流程声明和状态图。</li>
+<li>在固定流程页面创建实验室实例及记录，输入标题和说明，保存。检查实际业务状态为 draft。</li>
+<li>提交记录，观察 submitted。打开同一实例的对话入口，确认组件读取的是同一对象和修订号。</li>
+<li>退回并填写反馈，再编辑、保存、重新提交、完成。确认 returned → submitted → completed，历史记录能够解释变化。</li>
+<li>刷新网页或重新登录，继续自己的实例。尝试旧修订号、重复请求及不合法转移，检查冲突/回执/拒绝是否正确。</li>
+<li>使用另一个用户尝试读取记录，检查私有边界；调试台也不应显示他人的实例。</li>
+</ol>
+<p>这组步骤同时验证声明、注册、组件复用、状态规则、持久化、个人恢复、幂等与权限。远程模块还需测试服务不可用、超时、重新连接以及授权桥接失败时的行为。</p>
+<h2 id="生成模板与接入-node-js">生成模板与接入 Node.js</h2>
+<p>在平台根目录使用项目 Python 环境：</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe scripts/module_kit.py scaffold --template tool-python --module-id sample-tool --title &quot;示例工具&quot; --output ..\sample-tool
+.\.venv\Scripts\python.exe scripts/module_kit.py check ..\sample-tool
+.\.venv\Scripts\python.exe scripts/module_kit.py scaffold --template workflow-node --module-id sample-workflow --title &quot;示例流程&quot; --output ..\sample-workflow
+.\.venv\Scripts\python.exe scripts/module_kit.py check ..\sample-workflow
+</code></pre>
+<p>生成目录必须是新的目录。Node 参考模板使用 Node 24 内置 SQLite；它的单进程存储不是自动可扩展的分布式数据库。按生成 README 启动独立服务、配置服务令牌与中央授权连接，再完成发现、前端包安装/构建、权限注册、启用和授予。Python HTTP 服务遵循相同 wire contract，不需要为了接入重写为 Node。</p>
+<p>平台不会把模型 API key 自动下发给远程模块。需要模型的模块应声明能力边界，并由服务自身管理凭据或接入经正式设计的模型代理；不能从前端组件读取平台密钥。</p>
+<h2 id="ai-开发时的固定工作方式">AI 开发时的固定工作方式</h2>
+<p>把最新 <code>prompts/模块开发快速提示词.md</code> 和本文交给开发 AI；复杂改造再提供完整版及组件提示词。让 AI 先列出状态、动作、权限事实、对象投影、组件和页面/对话组合，再实现代码。</p>
+<p>业务日常开发只修改模块自己的 backend、frontend 和声明。修改宿主 SDK、认证/授权协议、传输契约或提示词生成器属于框架工作，需要同步受影响模块。每轮提交记录测试结果，中文 commit，不提交本地密钥、数据或依赖。</p>
+<h2 id="验收时检查什么">验收时检查什么</h2>
+<table>
+<thead>
+<tr>
+<th>检查</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>声明与代码</td>
+<td>注册能力存在，版本及输入输出匹配，前端导出组件名正确</td>
+</tr>
+<tr>
+<td>状态</td>
+<td>只有合法转移能推进，图和实际 projection.state 一致</td>
+</tr>
+<tr>
+<td>一次开发双端</td>
+<td>Web 与对话使用同一组件、同一对象，页面组合与对话步骤都可完成</td>
+</tr>
+<tr>
+<td>恢复与分支</td>
+<td>登录恢复、刷新恢复、个人草稿、分支对象引用符合预期</td>
+</tr>
+<tr>
+<td>多角色</td>
+<td>每个角色在正确阶段看到正确入口，越权直接调用也被拒绝</td>
+</tr>
+<tr>
+<td>并发和重试</td>
+<td>旧修订冲突，重复请求不会重复创建/提交</td>
+</tr>
+<tr>
+<td>远程故障</td>
+<td>离线、超时、授权桥接失败，不把错误当成功</td>
+</tr>
+<tr>
+<td>前端真实构建</td>
+<td>生产 build 后实际浏览器操作，不只运行 jsdom</td>
+</tr>
+<tr>
+<td>文档和交接</td>
+<td>更新提示词、契约快照、模块 README 和中文提交记录</td>
+</tr>
+</tbody></table>
+<p>核心状态规则和权限用确定性测试证明；模型引导用真实模型另做效果测试，两者的结果分别记录。</p>
+</article></main></div>
+<footer>正文由受控 Markdown 源文件生成。页面刷新不会执行任何业务动作。</footer></body></html>

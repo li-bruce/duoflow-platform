@@ -1,0 +1,26 @@
+name: Platform checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  platform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: common-platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: pip install -r requirements.lock.txt
+      - run: npm ci
+        working-directory: common-platform/web
+      - run: python scripts/build_module_developer_prompt.py --check
+      - run: mkdir -p ../work/pytest && PLATFORM_DATA_DIR=../work/test-data python -m pytest tests -q --basetemp ../work/pytest/run
+      - run: npm test && npm run build
+        working-directory: common-platform/web
+      - run: python scripts/build_handbooks.py --check

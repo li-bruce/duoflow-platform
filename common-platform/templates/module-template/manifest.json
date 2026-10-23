@@ -1,0 +1,55 @@
+{
+  "id": "example.echo",
+  "version": "1.0.0",
+  "name": "回显示例模板",
+  "description": "无领域模块模板：提交一条消息，返回相同文本。复制后通过安装清单注册。",
+  "capabilities": [
+    {
+      "id": "example.echo.echo",
+      "version": "1.0.0",
+      "title": "回显消息",
+      "description": "将输入消息原样返回，用于验证新模块注册和两端呈现。",
+      "kind": "query",
+      "input_schema": "schemas/input.json",
+      "output_schema": "schemas/output.json",
+      "handler": "handlers:echo",
+      "roles": [
+        "admin",
+        "member"
+      ],
+      "execution": {
+        "mode": "sync",
+        "confirmation": false
+      },
+      "presentation": {
+        "page": {
+          "renderer": "text-result"
+        },
+        "conversation": {
+          "renderer": "text-result"
+        }
+      }
+    }
+  ],
+  "surfaces": {
+    "page_tools": [
+      {
+        "id": "main-form",
+        "title": "回显消息表单",
+        "description": "由平台按参数定义生成，调用后保存平台记录。",
+        "kind": "form",
+        "capability_ids": [
+          "example.echo.echo"
+        ]
+      }
+    ],
+    "conversation": {
+      "capability_ids": [
+        "example.echo.echo"
+      ],
+      "starter_prompts": [
+        "回显消息"
+      ]
+    }
+  }
+}

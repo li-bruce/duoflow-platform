@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "protocol_version": {
+      "const": "1.1"
+    },
+    "request_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "capability_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]{2,120}$"
+    },
+    "capability_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40
+    },
+    "input": {
+      "type": "object"
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "workspace_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "actor": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "role": {
+              "enum": [
+                "admin",
+                "member",
+                "researcher",
+                "contributor",
+                "curator",
+                "reviewer",
+                "system_admin"
+              ]
+            },
+            "roles": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "admin",
+                  "member",
+                  "researcher",
+                  "contributor",
+                  "curator",
+                  "reviewer",
+                  "system_admin"
+                ]
+              },
+              "maxItems": 7,
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "organization_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 100
+            },
+            "team_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "maxItems": 100,
+              "uniqueItems": true
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "authorization_revision": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "id",
+            "role",
+            "roles",
+            "organization_id",
+            "team_ids",
+            "name",
+            "authorization_revision"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "workspace_id",
+        "actor"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "protocol_version",
+    "request_id",
+    "capability_id",
+    "capability_version",
+    "input",
+    "context"
+  ],
+  "additionalProperties": false
+}

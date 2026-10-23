@@ -1,0 +1,227 @@
+{
+  "id": "example.workflow.local",
+  "version": "1.0.0",
+  "name": "Python 原生记录流程",
+  "description": "中立模块模板：本地业务对象、修订、共享页面和对话步骤。",
+  "workflow_adapter": "adapter:create",
+  "capabilities": [
+    {
+      "id": "example.workflow.local.create",
+      "version": "1.0.0",
+      "title": "创建私人记录",
+      "description": "私人记录的 create 操作；对象和版本由模块保存。",
+      "kind": "command",
+      "handler": "adapter:create_note",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "body": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            },
+            "required": [
+              "title",
+              "body"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "command"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object"
+      },
+      "roles": [
+        "member"
+      ],
+      "execution": {
+        "mode": "sync",
+        "confirmation": true
+      },
+      "presentation": {
+        "page": {
+          "renderer": "json"
+        },
+        "conversation": {
+          "renderer": "json"
+        }
+      }
+    },
+    {
+      "id": "example.workflow.local.edit",
+      "version": "1.0.0",
+      "title": "编辑私人记录",
+      "description": "私人记录的 edit 操作；对象和版本由模块保存。",
+      "kind": "command",
+      "handler": "adapter:edit_note",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "object_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "command": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "body": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            },
+            "required": [
+              "title",
+              "body"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "object_id",
+          "expected_revision",
+          "command"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object"
+      },
+      "roles": [
+        "member"
+      ],
+      "execution": {
+        "mode": "sync",
+        "confirmation": true
+      },
+      "presentation": {
+        "page": {
+          "renderer": "json"
+        },
+        "conversation": {
+          "renderer": "json"
+        }
+      }
+    },
+    {
+      "id": "example.workflow.local.read",
+      "version": "1.0.0",
+      "title": "读取私人记录",
+      "description": "私人记录的 read 操作；对象和版本由模块保存。",
+      "kind": "query",
+      "handler": "adapter:read_note",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "object_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "object_id"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object"
+      },
+      "roles": [
+        "member"
+      ],
+      "execution": {
+        "mode": "sync",
+        "confirmation": false
+      },
+      "presentation": {
+        "page": {
+          "renderer": "json"
+        },
+        "conversation": {
+          "renderer": "json"
+        }
+      }
+    },
+    {
+      "id": "example.workflow.local.list",
+      "version": "1.0.0",
+      "title": "列出本人记录",
+      "description": "私人记录的 list 操作；对象和版本由模块保存。",
+      "kind": "query",
+      "handler": "adapter:list_notes",
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object"
+      },
+      "roles": [
+        "member"
+      ],
+      "execution": {
+        "mode": "sync",
+        "confirmation": false
+      },
+      "presentation": {
+        "page": {
+          "renderer": "json"
+        },
+        "conversation": {
+          "renderer": "json"
+        }
+      }
+    }
+  ],
+  "surfaces": {
+    "page_tools": [
+      {
+        "id": "notes",
+        "title": "记录工作台",
+        "description": "同一私人记录的创建、编辑和查询。",
+        "kind": "form",
+        "capability_ids": [
+          "example.workflow.local.create",
+          "example.workflow.local.edit",
+          "example.workflow.local.read",
+          "example.workflow.local.list"
+        ]
+      }
+    ],
+    "conversation": {
+      "capability_ids": [
+        "example.workflow.local.create",
+        "example.workflow.local.edit",
+        "example.workflow.local.read",
+        "example.workflow.local.list"
+      ],
+      "starter_prompts": [
+        "打开私人记录流程"
+      ]
+    }
+  }
+}

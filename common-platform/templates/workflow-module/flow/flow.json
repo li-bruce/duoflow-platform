@@ -1,0 +1,89 @@
+{
+  "flows": [
+    {
+      "protocol_version": "1.0",
+      "id": "example.notes",
+      "version": "1.0.0",
+      "title": "私人记录流程",
+      "description": "按当前步骤创建或编辑本人记录。",
+      "triggers": [
+        "打开私人记录流程"
+      ],
+      "provider": {
+        "object_type": "example.note",
+        "read_capability": "example.workflow.local.read"
+      },
+      "initial_step": "pick",
+      "steps": [
+        {
+          "id": "pick",
+          "title": "记录列表",
+          "description": "选择已有记录，或填写标题与内容创建一条新记录。",
+          "component": "Picker",
+          "actions": [
+            {
+              "id": "create",
+              "title": "创建记录",
+              "capability_id": "example.workflow.local.create",
+              "capability_version": "1.0.0",
+              "command_schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "body": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "title",
+                  "body"
+                ],
+                "additionalProperties": false
+              },
+              "creates_object": true,
+              "target_step": "edit"
+            }
+          ]
+        },
+        {
+          "id": "edit",
+          "title": "编辑内容",
+          "description": "这里编辑的是个人草稿，点击保存后才更新业务记录。",
+          "component": "Editor",
+          "actions": [
+            {
+              "id": "edit",
+              "title": "保存记录",
+              "capability_id": "example.workflow.local.edit",
+              "capability_version": "1.0.0",
+              "command_schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "body": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "title",
+                  "body"
+                ],
+                "additionalProperties": false
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

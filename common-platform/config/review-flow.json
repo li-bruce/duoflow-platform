@@ -1,0 +1,10 @@
+{
+  "id": "core.review",
+  "version": "1.0.0",
+  "name": "通用结果复核",
+  "transitions": {
+    "submit": {"from": ["draft", "returned"], "to": "in_review", "roles": ["member", "admin"]},
+    "accept": {"from": ["in_review"], "to": "accepted", "roles": ["admin"]},
+    "return": {"from": ["in_review"], "to": "returned", "roles": ["admin"]}
+  }
+}

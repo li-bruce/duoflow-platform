@@ -1,0 +1,4 @@
+interface:
+  display_name: "DuoFlow 模块构建"
+  short_description: "基于业务图完成模块、共享界面与接入验证，并持续维护实现映射和运行证据"
+  default_prompt: "使用 $duoflow-module，根据我的业务要求构建可在页面和对话中使用的 DuoFlow 模块。"

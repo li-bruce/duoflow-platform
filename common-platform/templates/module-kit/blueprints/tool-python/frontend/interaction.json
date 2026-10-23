@@ -1,0 +1,12 @@
+{
+  "protocol_version": "1.0",
+  "id": "__MODULE_ID__.tool",
+  "version": "1.0.0",
+  "title": "__TITLE__",
+  "description": "页面和对话共用文本输入、动作和结果组件。",
+  "triggers": ["打开文本整理工具"],
+  "input_schema": {"type": "object", "properties": {}, "additionalProperties": false},
+  "state_schema": {"type": "object", "properties": {"text": {"type": "string", "maxLength": 20000}}, "required": ["text"], "additionalProperties": false},
+  "initial_state": {"text": ""},
+  "actions": [{"id": "analyze", "title": "整理与统计", "capability_id": "__MODULE_ID__.analyze", "capability_version": "1.0.0", "completes": true, "bindings": {"text": {"source": "state", "key": "text"}}}]
+}

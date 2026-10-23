@@ -1,0 +1,12 @@
+{
+  "contract_version": "1.0",
+  "module_id": "__MODULE_ID__",
+  "version": "1.0.0",
+  "title": "__TITLE__权限",
+  "scope_keys": ["organization_id"],
+  "permissions": [{"id": "__MODULE_ID__.use", "title": "在本机构使用文本工具"}],
+  "role_templates": [{"id": "__MODULE_ID__.user", "title": "工具使用者", "permissions": ["__MODULE_ID__.use"], "required_scope": ["organization_id"]}],
+  "command_mappings": [{"capability_id": "__MODULE_ID__.analyze", "permission": "__MODULE_ID__.use"}],
+  "experiences": [],
+  "workitem_sources": []
+}

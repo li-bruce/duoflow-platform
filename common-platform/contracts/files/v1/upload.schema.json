@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Upload session v1",
+  "description": "PUT sequential raw chunks of at most chunk_size bytes. Repeating the same index and digest is idempotent; different bytes conflict. Complete revalidates total size and SHA-256, then the business service atomically links the immutable file. No chunk bytes are stored in conversation history.",
+  "type": "object", "additionalProperties": false,
+  "required": ["upload_id", "object_ref", "filename", "size", "sha256", "chunk_size", "offset", "uploaded_chunks", "state", "expires_at"],
+  "properties": {
+    "upload_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$"},
+    "object_ref": {"type": "object", "additionalProperties": false, "required": ["object_type", "object_id"], "properties": {"object_type": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,99}$"}, "object_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$"}}},
+    "filename": {"type": "string", "minLength": 1, "maxLength": 180, "pattern": "^[^/\\\\\u0000-\u001f\u007f]+$"},
+    "size": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "chunk_size": {"const": 1048576},
+    "offset": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+    "uploaded_chunks": {"type": "array", "maxItems": 100001, "uniqueItems": true, "items": {"type": "integer", "minimum": 0, "maximum": 100000}},
+    "state": {"enum": ["uploading", "complete", "aborted", "failed"]},
+    "expires_at": {"type": ["string", "null"], "maxLength": 60}
+  }
+}

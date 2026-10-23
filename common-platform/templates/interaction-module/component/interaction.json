@@ -1,0 +1,8 @@
+{
+  "protocol_version":"1.0", "id":"example.interaction", "version":"1.0.0",
+  "title":"共享回显组件", "description":"同一消息编辑器在页面和对话中使用。", "triggers":["打开共享回显组件"],
+  "input_schema":{"type":"object","properties":{},"additionalProperties":false},
+  "state_schema":{"type":"object","properties":{"message":{"type":"string","maxLength":2000}},"required":["message"],"additionalProperties":false},
+  "initial_state":{"message":""},
+  "actions":[{"id":"echo","title":"提交消息","capability_id":"example.interaction.echo","capability_version":"1.0.0","completes":true,"bindings":{"message":{"source":"state","key":"message"}}}]
+}

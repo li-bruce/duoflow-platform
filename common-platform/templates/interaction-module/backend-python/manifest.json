@@ -1,0 +1,11 @@
+{
+  "id":"example.interaction", "version":"1.0.0", "name":"共享组件后端模板", "description":"Python 原生能力处理器。",
+  "capabilities":[{
+    "id":"example.interaction.echo", "version":"1.0.0", "title":"共享组件回显", "description":"接收消息并返回相同文本。", "kind":"query", "handler":"handlers:echo",
+    "input_schema":{"type":"object","properties":{"message":{"type":"string","minLength":1,"maxLength":2000}},"required":["message"],"additionalProperties":false},
+    "output_schema":{"type":"object","properties":{"text":{"type":"string"}},"required":["text"],"additionalProperties":false},
+    "roles":["researcher","contributor","curator","reviewer","system_admin"], "execution":{"mode":"sync","confirmation":false},
+    "presentation":{"page":{"renderer":"json"},"conversation":{"renderer":"json"}}
+  }],
+  "surfaces":{"page_tools":[{"id":"echo","title":"回显表单","description":"基础能力入口。","kind":"form","capability_ids":["example.interaction.echo"]}],"conversation":{"capability_ids":["example.interaction.echo"],"starter_prompts":["打开共享回显组件"]}}
+}

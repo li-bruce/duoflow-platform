@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>DuoFlow · 交互演示</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="site.css" />
+    <script src="demo.js" defer></script>
+  </head>
+  <body data-product="platform">
+    <header class="top">
+      <a class="brand" href="index.html"
+        ><span class="mark" aria-hidden="true"><i></i><i></i></span>DuoFlow
+        <small>交互演示</small></a
+      >
+      <nav>
+        <a href="index.html">返回功能介绍</a><span class="version">v0.01</span>
+      </nav>
+    </header>
+    <main class="demo-main">
+      <p class="eyebrow" id="demo-category">独立体验</p>
+      <h1 id="demo-title">一步一步，看看它怎样工作。</h1>
+      <p class="lead" id="demo-description"></p>
+      <p class="demo-note">交互演示 · 使用浏览器内的示例数据</p>
+      <div class="demo-layout">
+        <nav id="step-list" class="steps" aria-label="演示步骤"></nav>
+        <section class="demo-panel">
+          <div class="panel-header">
+            <span id="step-caption"></span
+            ><button id="reset" class="small-button">重新开始</button>
+          </div>
+          <h2 id="step-title"></h2>
+          <p id="step-description"></p>
+          <div id="stage"></div>
+          <div class="demo-controls">
+            <button class="small-button" id="previous">上一步</button
+            ><button class="button" id="next">继续 →</button>
+          </div>
+          <p id="feedback" role="status" aria-live="polite"></p>
+        </section>
+      </div>
+      <a class="text-link" href="index.html">← 回到功能介绍</a>
+    </main>
+    <footer>
+      <span>DuoFlow · 交互演示</span><span>页面与示例各自独立</span>
+    </footer>
+  </body>
+</html>

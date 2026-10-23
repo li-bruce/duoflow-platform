@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Immutable business-service file reference v1",
+  "description": "The installed flow binds the service and business object. No browser-supplied storage URL or platform capability is accepted. This descriptor is not authorization; the service reloads the referenced file and its object ACL. Transport does not assert that declared large-file limits have been load-tested.",
+  "type": "object", "additionalProperties": false,
+  "required": ["file_id", "filename", "size", "sha256", "media_type", "inventory"],
+  "properties": {
+    "file_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$"},
+    "filename": {"type": "string", "minLength": 1, "maxLength": 180, "pattern": "^[^/\\\\\u0000-\u001f\u007f]+$"},
+    "size": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "media_type": {"type": "string", "minLength": 1, "maxLength": 120},
+    "inventory": {"type": ["object", "array"], "description": "Business parser inventory, not executable content; the owning module defines its schema."}
+  }
+}

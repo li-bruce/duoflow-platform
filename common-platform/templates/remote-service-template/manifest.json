@@ -1,0 +1,97 @@
+{
+  "protocol_version": "1.1",
+  "module": {
+    "id": "example.remote",
+    "version": "1.0.0",
+    "name": "独立服务模板",
+    "description": "无领域的消息回显示例，可复制为独立 HTTP 服务。"
+  },
+  "capabilities": [
+    {
+      "id": "example.remote.echo",
+      "version": "1.0.0",
+      "title": "远程回显消息",
+      "description": "独立服务通过 HTTP/JSON 返回消息。",
+      "kind": "command",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "消息",
+            "format": "textarea",
+            "minLength": 1,
+            "maxLength": 50000,
+            "default": "这是一条合成演示消息。",
+            "examples": [
+              "这是一条合成演示消息。"
+            ]
+          }
+        }
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "text"
+        ],
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "roles": [
+        "admin",
+        "member"
+      ],
+      "execution": {
+        "mode": "background",
+        "confirmation": false
+      },
+      "presentation": {
+        "page": {
+          "renderer": "text-result"
+        },
+        "conversation": {
+          "renderer": "text-result"
+        }
+      },
+      "result": {
+        "resource_type": "example.remote",
+        "title": "远程消息结果",
+        "text_artifact": {
+          "field": "text",
+          "name": "message.txt"
+        }
+      }
+    }
+  ],
+  "surfaces": {
+    "page_tools": [
+      {
+        "id": "main-form",
+        "title": "远程回显消息表单",
+        "description": "由平台按参数定义生成，调用后保存平台记录。",
+        "kind": "form",
+        "capability_ids": [
+          "example.remote.echo"
+        ]
+      }
+    ],
+    "conversation": {
+      "capability_ids": [
+        "example.remote.echo"
+      ],
+      "starter_prompts": [
+        "远程回显消息"
+      ]
+    }
+  }
+}

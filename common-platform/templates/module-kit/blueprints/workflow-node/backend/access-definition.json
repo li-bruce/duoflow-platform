@@ -1,0 +1,143 @@
+{
+  "contract_version": "1.0",
+  "module_id": "__MODULE_ID__",
+  "version": "1.0.0",
+  "title": "__TITLE__权限",
+  "scope_keys": [
+    "project_id",
+    "organization_id"
+  ],
+  "permissions": [
+    {
+      "id": "__MODULE_ID__.read",
+      "title": "读取记录"
+    },
+    {
+      "id": "__MODULE_ID__.create",
+      "title": "创建记录"
+    },
+    {
+      "id": "__MODULE_ID__.edit",
+      "title": "编辑记录",
+      "guards": [
+        {
+          "type": "actor_is_fact",
+          "fact": "author_id"
+        }
+      ]
+    },
+    {
+      "id": "__MODULE_ID__.submit",
+      "title": "提交审核",
+      "guards": [
+        {
+          "type": "actor_is_fact",
+          "fact": "author_id"
+        }
+      ]
+    },
+    {
+      "id": "__MODULE_ID__.approve",
+      "title": "审核通过",
+      "guards": [
+        {
+          "type": "actor_not_fact",
+          "fact": "author_id"
+        }
+      ]
+    }
+  ],
+  "role_templates": [
+    {
+      "id": "__MODULE_ID__.author",
+      "title": "记录提交者",
+      "permissions": [
+        "__MODULE_ID__.read",
+        "__MODULE_ID__.create",
+        "__MODULE_ID__.edit",
+        "__MODULE_ID__.submit"
+      ],
+      "required_scope": [
+        "project_id",
+        "organization_id"
+      ]
+    },
+    {
+      "id": "__MODULE_ID__.reviewer",
+      "title": "记录审核人",
+      "permissions": [
+        "__MODULE_ID__.read",
+        "__MODULE_ID__.approve"
+      ],
+      "required_scope": [
+        "project_id",
+        "organization_id"
+      ]
+    }
+  ],
+  "command_mappings": [
+    {
+      "capability_id": "__MODULE_ID__.create",
+      "permission": "__MODULE_ID__.create"
+    },
+    {
+      "capability_id": "__MODULE_ID__.edit",
+      "permission": "__MODULE_ID__.edit"
+    },
+    {
+      "capability_id": "__MODULE_ID__.submit",
+      "permission": "__MODULE_ID__.submit"
+    },
+    {
+      "capability_id": "__MODULE_ID__.approve",
+      "permission": "__MODULE_ID__.approve"
+    },
+    {
+      "capability_id": "__MODULE_ID__.read",
+      "permission": "__MODULE_ID__.read"
+    },
+    {
+      "capability_id": "__MODULE_ID__.list",
+      "permission": "__MODULE_ID__.read"
+    }
+  ],
+  "experiences": [
+    {
+      "id": "__MODULE_ID__.author-workspace",
+      "title": "记录填报",
+      "description": "创建、编辑和提交本人的记录，读取授权项目内的协作记录。",
+      "flow_id": "__MODULE_ID__.workflow",
+      "required_permissions": [
+        "__MODULE_ID__.read",
+        "__MODULE_ID__.create"
+      ],
+      "step_ids": [
+        "pick",
+        "edit",
+        "review"
+      ]
+    },
+    {
+      "id": "__MODULE_ID__.review-workspace",
+      "title": "记录审核",
+      "description": "读取授权项目记录，审核其他人提交的记录。",
+      "flow_id": "__MODULE_ID__.workflow",
+      "required_permissions": [
+        "__MODULE_ID__.read",
+        "__MODULE_ID__.approve"
+      ],
+      "step_ids": [
+        "pick",
+        "edit",
+        "review"
+      ]
+    }
+  ],
+  "workitem_sources": [
+    {
+      "id": "__MODULE_ID__.records",
+      "capability_id": "__MODULE_ID__.list",
+      "experience_id": "__MODULE_ID__.review-workspace"
+    }
+  ]
+}

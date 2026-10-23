@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "registration_version": {
+      "const": "1.0"
+    },
+    "nonce": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "contract_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "platform_features": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80
+      },
+      "maxItems": 20,
+      "uniqueItems": true
+    },
+    "manifest": {
+      "type": "object"
+    },
+    "registration": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "registration_version",
+    "nonce",
+    "contract_digest",
+    "platform_features",
+    "manifest",
+    "registration"
+  ],
+  "additionalProperties": false
+}

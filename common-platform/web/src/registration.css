@@ -1,0 +1,8 @@
+.remote-services .service-steps{flex-wrap:wrap;gap:12px}
+.remote-services .service-steps li{min-width:8rem}
+.registration-admission{font-size:14px;line-height:1.7}
+.registration-admission h3{font-size:16px}
+.registration-admission ul{list-style:none;padding:0}
+.registration-admission li{padding:9px 0;border-bottom:1px solid #e6edf3;overflow-wrap:anywhere}
+.registration-admission details{margin-top:6px}
+.registration-admission code{white-space:normal;overflow-wrap:anywhere}

@@ -1,0 +1,197 @@
+{
+  "flows": [
+    {
+      "protocol_version": "1.0",
+      "id": "__MODULE_ID__.workflow",
+      "version": "1.0.0",
+      "title": "__TITLE__",
+      "description": "选择项目记录，填写并提交，由另一位具有相同范围授权的审核人办理。",
+      "triggers": [
+        "打开__TITLE__"
+      ],
+      "provider": {
+        "object_type": "__MODULE_ID__.record",
+        "read_capability": "__MODULE_ID__.read"
+      },
+      "initial_step": "pick",
+      "page_groups": [
+        {
+          "id": "work",
+          "title": "记录工作台",
+          "steps": [
+            "pick",
+            "edit",
+            "review"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "id": "pick",
+          "title": "选择或创建",
+          "description": "只列出当前范围可读的记录；项目编号由服务端配置确认。",
+          "component": "Picker",
+          "actions": [
+            {
+              "id": "create",
+              "title": "创建记录",
+              "capability_id": "__MODULE_ID__.create",
+              "capability_version": "1.0.0",
+              "command_schema": {
+                "type": "object",
+                "properties": {
+                  "project_id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$"
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "body": {
+                    "type": "string",
+                    "minLength": 0,
+                    "maxLength": 4000
+                  }
+                },
+                "required": [
+                  "project_id",
+                  "title",
+                  "body"
+                ],
+                "additionalProperties": false
+              },
+              "creates_object": true,
+              "target_step": "edit"
+            }
+          ]
+        },
+        {
+          "id": "edit",
+          "title": "填写与提交",
+          "description": "只允许作者修改草稿。提交以后记录冻结。",
+          "component": "Editor",
+          "actions": [
+            {
+              "id": "edit",
+              "title": "编辑记录",
+              "capability_id": "__MODULE_ID__.edit",
+              "capability_version": "1.0.0",
+              "command_schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "body": {
+                    "type": "string",
+                    "minLength": 0,
+                    "maxLength": 4000
+                  }
+                },
+                "required": [
+                  "title",
+                  "body"
+                ],
+                "additionalProperties": false
+              }
+            },
+            {
+              "id": "submit",
+              "title": "提交审核",
+              "capability_id": "__MODULE_ID__.submit",
+              "capability_version": "1.0.0",
+              "command_schema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "target_step": "review"
+            }
+          ]
+        },
+        {
+          "id": "review",
+          "title": "审核与结果",
+          "description": "审核人与作者必须不同。导航步骤不会自动执行审批。",
+          "component": "Review",
+          "actions": [
+            {
+              "id": "approve",
+              "title": "审核通过",
+              "capability_id": "__MODULE_ID__.approve",
+              "capability_version": "1.0.0",
+              "command_schema": {
+                "type": "object",
+                "properties": {
+                  "note": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "note"
+                ],
+                "additionalProperties": false
+              }
+            }
+          ]
+        }
+      ],
+      "state_machine": {
+        "id": "__MODULE_ID__.record-lifecycle",
+        "version": "1.0.0",
+        "initial": "draft",
+        "states": [
+          {
+            "id": "draft",
+            "title": "草稿"
+          },
+          {
+            "id": "submitted",
+            "title": "待审核"
+          },
+          {
+            "id": "approved",
+            "title": "已通过",
+            "terminal": true
+          }
+        ],
+        "transitions": [
+          {
+            "id": "save-draft",
+            "from": "draft",
+            "to": "draft",
+            "step_id": "edit",
+            "action_id": "edit",
+            "title": "保存草稿",
+            "guard_description": "作者本人、当前范围编辑权限与修订均通过。"
+          },
+          {
+            "id": "submit-draft",
+            "from": "draft",
+            "to": "submitted",
+            "step_id": "edit",
+            "action_id": "submit",
+            "title": "提交审核",
+            "guard_description": "作者本人、当前范围提交权限与修订均通过。"
+          },
+          {
+            "id": "approve-submitted",
+            "from": "submitted",
+            "to": "approved",
+            "step_id": "review",
+            "action_id": "approve",
+            "title": "审核通过",
+            "guard_description": "非作者的授权审核人，填写意见且修订一致。"
+          }
+        ]
+      }
+    }
+  ]
+}

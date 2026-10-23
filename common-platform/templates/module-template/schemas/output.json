@@ -1,0 +1,5 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object", "additionalProperties": false, "required": ["echo"],
+  "properties": {"echo": {"type": "string", "title": "原样回显", "minLength": 1}}
+}

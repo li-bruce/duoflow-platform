@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Authority-service job observation v1",
+  "description": "Business services start jobs through their declared command capability and return a reference. Fixed workflow endpoints read status/result or request cancellation. done means execution completed, not business approval. cancelled means the authority confirmed cancellation; a started remote request is not assumed stopped. This adapter is not a distributed scheduler or durable workflow engine.",
+  "type": "object", "additionalProperties": false,
+  "required": ["job_id", "object_ref", "kind", "state", "progress", "error", "retryable", "cancellable", "created_at", "updated_at"],
+  "properties": {
+    "job_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$"},
+    "object_ref": {"type": "object", "additionalProperties": false, "required": ["object_type", "object_id"], "properties": {"object_type": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,99}$"}, "object_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$"}}},
+    "kind": {"type": "string", "minLength": 1, "maxLength": 100},
+    "state": {"enum": ["queued", "running", "done", "failed", "cancelled"]},
+    "progress": {"type": "object", "additionalProperties": false, "required": ["completed", "total"], "properties": {"completed": {"type": "integer", "minimum": 0}, "total": {"type": "integer", "minimum": 0}}},
+    "error": {"type": ["object", "null"], "additionalProperties": false, "required": ["code", "message"], "properties": {"code": {"type": "string", "minLength": 1, "maxLength": 100}, "message": {"type": "string", "maxLength": 1200}}},
+    "retryable": {"type": "boolean"},
+    "cancellable": {"type": "boolean"},
+    "created_at": {"type": "string", "minLength": 1, "maxLength": 60},
+    "updated_at": {"type": "string", "minLength": 1, "maxLength": 60}
+  }
+}

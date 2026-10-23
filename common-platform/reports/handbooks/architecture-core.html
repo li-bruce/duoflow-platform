@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>通用框架架构与代码地图 · 平台使用说明</title>
+<link rel="stylesheet" href="../handbook-assets/handbook.css"><script src="../handbook-assets/handbook.js" defer></script></head>
+<body><header class="topbar"><a href="index.html" class="brand">平台使用说明</a><nav aria-label="常用入口"><a href="/#business">我的业务</a><a href="/#chat">对话工作台</a><a href="/reports/">其他报告</a></nav></header>
+<div class="layout"><aside class="sidebar"><nav aria-label="说明书列表"><p class="nav-label">说明书</p><a aria-current="page" href="architecture-core.html">通用框架架构与代码地图</a><a href="module-debug.html">模块开发与调试说明书</a><a href="migration.html">框架迁移与AI交接指南</a></nav><nav class="toc" aria-label="本页目录"><p class="nav-label">本页目录</p><a class="level-1" href="#通用框架架构与代码地图">通用框架架构与代码地图</a><a class="level-2" href="#先用一个例子理解">先用一个例子理解</a><a class="level-2" href="#总体结构">总体结构</a><a class="level-2" href="#三层分别负责什么">三层分别负责什么</a><a class="level-2" href="#前端组件-后端能力-业务流程如何连接">前端组件、后端能力、业务流程如何连接</a><a class="level-2" href="#必须分清的三种状态">必须分清的三种状态</a><a class="level-2" href="#一次动作如何走完">一次动作如何走完</a><a class="level-2" href="#对话与智能体的位置">对话与智能体的位置</a><a class="level-2" href="#权限如何保持通用">权限如何保持通用</a><a class="level-2" href="#代码地图-从需求找到文件">代码地图：从需求找到文件</a><a class="level-2" href="#通用源码与项目内容如何分开">通用源码与项目内容如何分开</a><a class="level-2" href="#当前实现与扩展边界">当前实现与扩展边界</a></nav></aside><main id="main-content"><div class="document-meta"><span>框架维护者、模块开发者与开发 AI</span><a href="architecture-core.md" download>下载 Markdown 原文</a></div><div class="tools" hidden><label for="doc-search">查找本页内容</label><input id="doc-search" type="search" placeholder="例如：登录、对话、测试" autocomplete="off"><button type="button" id="clear-search">清空</button><button type="button" id="expand-all">展开全部</button><button type="button" id="collapse-all">折叠章节</button><span id="search-status" role="status" aria-live="polite"></span></div><noscript><p>已展示完整正文；启用 JavaScript 后可搜索和折叠章节。</p></noscript><article id="doc-content"><h1 id="通用框架架构与代码地图">通用框架架构与代码地图</h1>
+<p>总框架负责微服务管理、统一认证和公共功能，并承担不同模块业务的连接与组织。各模块通过模块框架公开业务行为、数据、接口和共用界面，保留自己的正式记录与业务规则。单模块和组合业务都应同时有页面与对话两种呈现；当前已具备单模块双端、统一调用及明确后续动作，完整跨模块组合执行尚需补齐。</p>
+<p>本文描述当前源码实现。配套阅读：<a href="module-debug.html">模块开发与调试说明书</a>、<a href="migration.html">迁移与 AI 交接指南</a>。<a href="/#devtools">打开调试台</a>。</p>
+<h2 id="先用一个例子理解">先用一个例子理解</h2>
+<p>第一次了解可以先<a class="blocked-link" title="此链接未列入说明书发布范围">打开交互式入门指南</a>。它按“认识框架 → 亲手练习 → 了解分工 → 接入自己的功能”逐步讲解；练习只保存在当前浏览器。实际业务继续使用需要登录的工作台入口。入口分流在 <code>web/src/SiteRoot.tsx</code>，教学页面与独立练习状态在 <code>web/src/guide/</code>，不调用业务接口，不改变后文的正式对象和两端宿主机制。</p>
+<p>通用测试模块叫“框架实验室”。用户创建一条工作记录，保存草稿、提交、退回修改、再次提交，最后完成。记录只有标题、说明和办理状态，不属于任何专业业务。</p>
+<p>固定页面可以同时展示记录目录、编辑区、处理区。对话里则先解释下一步，再出现当前步骤的同一个组件。用户在页面提交后，回到对话继续处理时，后端仍返回同一个对象的最新状态。对话分支可以保留不同的浏览路径，但不会凭空复制一条已经提交的业务记录。</p>
+<p>实验室允许当前用户自己操作完整流程，用来调试接线。它不是多角色审批示例，不能据此认定真实审批允许一个人同时申请和批准。</p>
+<h2 id="总体结构">总体结构</h2>
+<p>核心分析见源码包内 <code>docs/模块公开与业务组织分析.md</code> 和<a class="blocked-link" title="此链接未列入说明书发布范围">交互页面“公开与组织”</a>。分析按服务、身份、行为、数据、接口、结果传递、业务组织、两种呈现及失败恢复核对当前代码。<code>tests/test_composition_boundaries.py</code> 用两个隔离合成模块验证后续动作可跨模块、准备不执行、目标权限单独检查、错误类型拒绝，以及当前 skills 和 workflow 格式的限制；不把这类检查称为完整组合业务已经实现。</p>
+<p><a class="blocked-link" title="此链接未列入说明书发布范围">交互式框架全貌</a> 以六章讲解整体构造、主框架、模块框架、一次交互、交互规则和运行恢复。结构图可点击查看职责、输入输出、存储与源码位置；执行演示覆盖正常提交、权限拒绝、版本冲突、重复请求和远程超时。页面演示与实际运行分别标识。</p>
+<p>这里的“模块框架”是一组共同格式与连接工具，包括功能说明、请求结果格式、共用界面接口、正式记录接口和权限定义，不是另一个独立平台进程。主框架依照这些约定调用实际业务模块；本地模块可使用同一数据库会话，独立服务自行持久化，通用框架不自动提供跨服务事务。</p>
+<pre><code class="language-text">用户
+ ├─ 固定页面：菜单 → 模块页面 → 组件组合
+ └─ 对话窗口：文字引导 → 当前步骤组件 → 反馈 → 下一步
+                     │ 两端使用同一个宿主 SDK
+             主框架的流程与组件宿主
+                     │ 动作、身份、对象引用、修订号
+             能力运行时 / 权限判断 / 任务记录
+              ├─ 原生 Python 模块
+              └─ HTTP 微服务：Python、Node.js 或其他语言
+                     │
+             模块仓库、业务状态、算法和专业数据
+</code></pre>
+<p>主框架和模块通过声明文件及 HTTP/原生接口协作。模块不读取浏览器 Cookie 推测身份，也不自行构造一个“管理员”传给平台。平台根据登录会话确认用户；模块再依据自己的真实记录核查对象归属、状态、修订和可操作条件。</p>
+<h2 id="三层分别负责什么">三层分别负责什么</h2>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>主要职责</th>
+<th>不应放在这里的内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>主框架</td>
+<td>登录、中央授权、能力目录、页面与对话宿主、个人办理实例、会话分支、任务、模型配置、远程连接、健康检查、调试</td>
+<td>某行业的数据字段、审批规则、专业算法</td>
+</tr>
+<tr>
+<td>模块框架与 SDK</td>
+<td>声明格式、动作信封、共享组件接口、对象投影、权限桥接、模板和静态检查</td>
+<td>所有模块共用一套硬编码业务流程</td>
+</tr>
+<tr>
+<td>业务模块</td>
+<td>数据模型、业务状态机、命令处理、检索/算法、权限事实、共享组件、办理视图</td>
+<td>复制一套平台登录系统或在页面里保存最终审批状态</td>
+</tr>
+</tbody></table>
+<p>“后端组件”在当前协议中主要表现为 capability。一个模块有多个 query/command 能力，页面组件或流程动作引用它们的 ID 和版本。它不是任意 Python 函数都能被对话自动调用：函数需要注册输入输出、执行模式、权限和呈现方式。</p>
+<h2 id="前端组件-后端能力-业务流程如何连接">前端组件、后端能力、业务流程如何连接</h2>
+<table>
+<thead>
+<tr>
+<th>内容</th>
+<th>声明位置</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>模块身份、能力和入口</td>
+<td><code>manifest.json</code></td>
+<td>告知平台这个模块能做什么、如何调用</td>
+</tr>
+<tr>
+<td>一次交互组件</td>
+<td><code>interaction.json</code> + <code>Component.tsx</code></td>
+<td>草稿字段、动作绑定及页面/对话共享渲染</td>
+</tr>
+<tr>
+<td>多步骤业务流程</td>
+<td><code>flow.json</code> + <code>steps.tsx</code></td>
+<td>步骤、组件、动作、页面分组和对象 provider</td>
+</tr>
+<tr>
+<td>真实业务状态机</td>
+<td>flow 中的 <code>state_machine</code></td>
+<td>可视化业务状态及合法转移的声明</td>
+</tr>
+<tr>
+<td>对象投影</td>
+<td>adapter 的 read/list 等实现</td>
+<td>返回真实状态、版本、允许动作及可显示字段</td>
+</tr>
+<tr>
+<td>模块权限与办理视图</td>
+<td><code>access-definition.json</code></td>
+<td>权限名、角色模板、范围字段、experience 和待办源</td>
+</tr>
+</tbody></table>
+<p>例如，<code>edit</code> 步骤使用 <code>Editor</code> 组件，组件提交 <code>edit</code> 动作；动作绑定 <code>framework-lab.edit</code> 能力。后端按对象 ID 加载记录，核对身份与 <code>expected_revision</code>，保存后返回新投影。组件不需要知道数据库表名。</p>
+<p>页面组合使用 <code>page_groups</code>；对话使用流程步骤和个人 <code>cursor</code>。React 组件通过 SDK 取得 <code>projection</code>、<code>draft</code>、<code>execute</code>、<code>refresh</code> 等，因而不用再实现第二套对话业务逻辑。现有宿主直接支持 React/TypeScript 组件；Vue 页面不能原样作为 React 组件导出，需要适配为约定的宿主组件，或另行实现并验收 Vue 桥接。后端语言与前端组件框架是两个独立选择。</p>
+<h2 id="必须分清的三种状态">必须分清的三种状态</h2>
+<table>
+<thead>
+<tr>
+<th>状态</th>
+<th>事实来源</th>
+<th>例子</th>
+<th>谁改变它</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>业务状态</td>
+<td>模块仓库 → <code>projection.state</code></td>
+<td>draft、submitted、returned、completed</td>
+<td>模块命令处理器，事务内推进</td>
+</tr>
+<tr>
+<td>个人流程状态</td>
+<td>主框架 WorkflowInstance</td>
+<td>正在看编辑步骤、未提交草稿、关联会话</td>
+<td>个人宿主操作</td>
+</tr>
+<tr>
+<td>执行状态</td>
+<td>主框架 Run / 后台任务</td>
+<td>queued、running、succeeded、failed</td>
+<td>执行器和任务回报</td>
+</tr>
+</tbody></table>
+<p>浏览到“完成”页面不等于业务完成；任务成功也不代表审批通过。调试台同时显示三者。状态图不能直接改业务状态，声明的 <code>guard_description</code> 也不是可执行授权规则。</p>
+<h2 id="一次动作如何走完">一次动作如何走完</h2>
+<ol>
+<li>用户在 Web 或对话中的组件操作，SDK 提交动作 ID、命令、对象 ID、修订号和幂等键。</li>
+<li>主框架重新确认身份、组件/流程版本、动作引用、能力输入及访问权限。</li>
+<li>本地能力在宿主内运行；远程能力通过受控服务连接调用，携带当前身份和请求上下文。</li>
+<li>模块从仓库取得真实对象，检查对象权限、当前业务状态和修订号；重复请求返回原回执，冲突要求刷新。</li>
+<li>模块持久化业务变化，返回结果/新投影；平台记录调用与任务，对两端返回同一结果。</li>
+<li>宿主刷新可执行动作和当前组件。调试台下一次采样看到新状态；对象状态不会取自模型生成的文字。</li>
+</ol>
+<h2 id="对话与智能体的位置">对话与智能体的位置</h2>
+<p><code>app/agent_engine.py</code> 使用 LangGraph 管理已注册技能的引导，检查点保存在本地 SQLite。<code>model_gateway.py</code> 负责模型配置和调用；<code>model_tools.py</code> 将可用能力整理为工具描述和受约束的表单建议。模型可以帮助理解意图、准备参数、解释结果，但正式动作仍进入统一运行时和模块的权限/状态检查。</p>
+<p>没有模型密钥时仍可通过明确的技能触发词和组件操作测试流程。真实模型的专业回答质量需要独立评价，不能用“状态图能变色”代替模型效果验收。</p>
+<p>会话和消息持久化，重新登录可恢复自己的会话；分支产生新的个人视图。业务对象引用和权限重新检查，不把分支当作数据库回滚。跨模块协作可以通过能力输出、明确对象/资源引用和后续技能衔接；任意模块间的自动数据语义映射、分布式事务及通用补偿工作流尚未自动实现，需要定义专门编排与验收。</p>
+<h2 id="权限如何保持通用">权限如何保持通用</h2>
+<p>中央身份描述“谁登录了、属于哪些组织与团队、有哪些平台角色”。模块声明“本模块有哪些权限、角色模板、范围字段和办理视图”。管理员再把具体模板按范围授予具体用户。安装权限定义本身不会给任何用户授权。</p>
+<p>页面可见、流程可进入、能力可调用、对象可读取、某状态可执行动作，是不同层级的检查。隐藏一个按钮不能代替后端权限。<code>system_admin</code> 负责系统管理，并不自动拥有全部业务数据。旧 <code>admin</code> 是具有较宽权限的本地演示兼容角色，正式项目宜用范围授权和独立系统管理员。</p>
+<p>当前原生身份是本地 SQLite 账号和 Cookie 会话，不是已经部署好的 OAuth/OIDC 服务。远程模块使用框架提供的身份/授权桥接；外部 OIDC 需要实现登录适配和账号映射后另行测试。当前业务目录、组件与流程 API 需要登录；公开静态说明书不需要登录。游客会话和公开能力调用尚未作为完整接入模式实现，不能用共享注册账号模拟游客。</p>
+<h2 id="代码地图-从需求找到文件">代码地图：从需求找到文件</h2>
+<table>
+<thead>
+<tr>
+<th>代码区域</th>
+<th>作用</th>
+<th>常见修改者</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>app/main.py</code>、<code>security.py</code>、<code>db.py</code></td>
+<td>HTTP 装配、会话、通用存储</td>
+<td>主框架维护者</td>
+</tr>
+<tr>
+<td><code>app/identity.py</code>、<code>identity_routes.py</code></td>
+<td>用户、组织、团队、基础角色</td>
+<td>主框架维护者</td>
+</tr>
+<tr>
+<td><code>app/access_control.py</code>、<code>access_routes.py</code>、<code>access_bridge.py</code></td>
+<td>Casbin 范围授权、管理接口、远程判定桥接</td>
+<td>主框架维护者</td>
+</tr>
+<tr>
+<td><code>app/registry.py</code>、<code>module_routes.py</code></td>
+<td>本地能力注册、模块启停和目录</td>
+<td>主框架维护者</td>
+</tr>
+<tr>
+<td><code>app/runtime.py</code></td>
+<td>能力调用、幂等、任务与结果</td>
+<td>主框架维护者</td>
+</tr>
+<tr>
+<td><code>app/remote_services.py</code>、<code>service_monitor.py</code>、<code>remote_routes.py</code></td>
+<td>远程发现、连接与健康监测</td>
+<td>主框架维护者</td>
+</tr>
+<tr>
+<td><code>app/workflows.py</code>、<code>workflow_routes.py</code>、<code>workflow_transport.py</code></td>
+<td>多步骤宿主、个人实例、对象适配和传输</td>
+<td>主框架维护者</td>
+</tr>
+<tr>
+<td><code>app/interactions.py</code>、<code>interaction_routes.py</code></td>
+<td>单组件实例和动作绑定</td>
+<td>主框架维护者</td>
+</tr>
+<tr>
+<td><code>app/conversation.py</code>、<code>conversation_routes.py</code>、<code>agent_engine.py</code></td>
+<td>对话记录、分支及技能引导</td>
+<td>主框架维护者</td>
+</tr>
+<tr>
+<td><code>app/model_gateway.py</code>、<code>model_routes.py</code>、<code>model_tools.py</code></td>
+<td>模型配置、调用及工具提示</td>
+<td>主框架维护者</td>
+</tr>
+<tr>
+<td><code>app/business_center.py</code></td>
+<td>我的业务、继续办理、状态反馈</td>
+<td>主框架维护者</td>
+</tr>
+<tr>
+<td><code>app/file_routes.py</code>、<code>contracts/files/</code>、<code>contracts/jobs/</code></td>
+<td>文件与长任务协议</td>
+<td>框架与模块共同适配</td>
+</tr>
+<tr>
+<td><code>app/state_machines.py</code>、<code>devtools.py</code>、<code>devtools_routes.py</code></td>
+<td>状态声明校验、注册目录、实时观察</td>
+<td>主框架维护者</td>
+</tr>
+<tr>
+<td><code>web/src/App.tsx</code>、<code>Conversations.tsx</code>、<code>MyBusiness.tsx</code></td>
+<td>统一入口、对话和业务中心</td>
+<td>主框架维护者</td>
+</tr>
+<tr>
+<td><code>web/src/workflows/</code>、<code>interactions/</code></td>
+<td>宿主 SDK、组件装载、双端呈现</td>
+<td>主框架维护者</td>
+</tr>
+<tr>
+<td><code>web/src/DevTools.tsx</code></td>
+<td>组件/流程检查及状态图</td>
+<td>主框架维护者</td>
+</tr>
+<tr>
+<td><code>extensions/&lt;module&gt;/</code></td>
+<td>已安装的原生 Python 模块</td>
+<td>模块开发者</td>
+</tr>
+<tr>
+<td><code>flows/packs/&lt;pack&gt;/</code>、<code>components/packs/&lt;pack&gt;/</code></td>
+<td>受信任的共享前端包</td>
+<td>模块开发者，平台负责安装构建</td>
+</tr>
+<tr>
+<td><code>templates/module-kit/</code>、<code>scripts/module_kit.py</code></td>
+<td>生成器、公共 SDK、静态检查</td>
+<td>主框架维护者</td>
+</tr>
+<tr>
+<td><code>contracts/</code></td>
+<td>JSON Schema 与协议说明</td>
+<td>统一接口维护者</td>
+</tr>
+<tr>
+<td><code>prompts/_source/</code>、<code>scripts/build_module_developer_prompt.py</code></td>
+<td>给开发 AI 的语义约定与契约快照</td>
+<td>修改框架时同步</td>
+</tr>
+<tr>
+<td><code>docs/</code>、<code>scripts/build_handbooks.py</code>、<code>reports/handbooks/</code></td>
+<td>Markdown 源码与交互式静态说明书</td>
+<td>文档维护者</td>
+</tr>
+<tr>
+<td><code>scripts/export_framework.py</code></td>
+<td>通用源码迁移包</td>
+<td>主框架维护者</td>
+</tr>
+</tbody></table>
+<h2 id="通用源码与项目内容如何分开">通用源码与项目内容如何分开</h2>
+<p>运行框架所需的通用源码在 <code>app/</code>、<code>web/src/</code>、<code>contracts/</code>、<code>templates/</code>。本项目原有业务模块仍留在当前工作区供继续联调，不会被导出器复制进通用包。</p>
+<p>业务演示账号元数据位于可选的 <code>config/identity-demo.json</code>，项目验收文档入口位于可选的 <code>config/project-public-documents.json</code>。通用包不带这两个文件；不创建行业组织或账号，也不发布旧项目文档。<code>identity-policy.json</code> 在通用包中只保留 member、admin、system_admin。旧协议 Schema 内的历史角色枚举仍是兼容字段，不表示导入了那些业务模块。</p>
+<p>通用包重新生成 installed 清单，只安装 framework-lab；重新生成提示词指纹和三份静态说明书。它不复制 <code>.git</code>、虚拟环境、node_modules、前端构建产物、数据库、上传文件、模型配置、远程服务连接、日志和真实凭据。包内带锁定依赖，首次安装仍需获取这些依赖。</p>
+<h2 id="当前实现与扩展边界">当前实现与扩展边界</h2>
+<p>这是可运行、可测试的本地通用开发基座。当前 SQLite、单进程参考服务、受信任前端编译包和轮询观察符合本地模块开发与演示；多实例生产部署还需落实共享任务队列、并发与高可用、日志/指标平台、数据库迁移、正式身份提供方和备份恢复。</p>
+<p>Web 调试台负责查看已注册内容、校验声明、观察本人实例和通过正式组件操作。它不是拖拽 BPMN 编辑器，也不在网页中安装陌生代码。旧流程没有显式状态机时会显示“未声明”，不会把导航步骤自动当成业务状态。前端源码存在不等于当前浏览器已经加载新构建，真实浏览器操作仍是验收的一部分。</p>
+</article></main></div>
+<footer>正文由受控 Markdown 源文件生成。页面刷新不会执行任何业务动作。</footer></body></html>

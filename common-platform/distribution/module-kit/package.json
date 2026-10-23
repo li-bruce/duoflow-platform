@@ -1,0 +1,9 @@
+{
+  "name": "duoflow-module-kit",
+  "version": "0.0.1",
+  "releaseVersion": "v0.01",
+  "private": true,
+  "description": "Standalone DuoFlow module scaffolding and static TypeScript checks",
+  "engines": {"node": ">=24"},
+  "devDependencies": {"typescript": "5.9.3"}
+}

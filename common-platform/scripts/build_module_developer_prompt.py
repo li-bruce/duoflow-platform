@@ -131,7 +131,9 @@ def exported_routes(root: Path, path: str) -> list[dict]:
 def public_template_files(root: Path, directory: str) -> dict[str, str]:
     """Export only reviewed public source formats, never env or runtime files."""
     values = {}
-    for path in sorted((root / directory).rglob('*')):
+    # Path ordering depends on the host OS (Windows folds letter case). Use
+    # public POSIX text so generated documents stay identical after a checkout.
+    for path in sorted((root / directory).rglob('*'), key=lambda p: p.as_posix()):
         relative = path.relative_to(root)
         if (path.is_file() and path.suffix in {'.json', '.md', '.py', '.mjs', '.ts', '.tsx', '.css', '.ps1'}
                 and not EXCLUDED_PARTS.intersection(relative.parts)
@@ -172,7 +174,7 @@ def build_snapshot(root: Path) -> dict:
     # current example is adapted explicitly and validated against real discovery.
     legacy_manifest = json.loads(read(root, remote_dir + "manifest.json"))
     contracts = {path.name: json.loads(read(root, path.relative_to(root)))
-                 for path in sorted((root / 'contracts/v1.2').glob('*.schema.json'))}
+                 for path in sorted((root / 'contracts/v1.2').glob('*.schema.json'), key=lambda p: p.as_posix())}
     expected_contracts = {'invoke-request-1.1.schema.json', 'invoke-response-1.1.schema.json',
                           'workspace.schema.json', 'platform-file.schema.json', 'skill.schema.json'}
     if not expected_contracts <= set(contracts):
@@ -232,7 +234,7 @@ def build_snapshot(root: Path) -> dict:
     dependencies = [one((line for line in dependency_lines if line.startswith(name + "==")), name)
                     for name in ("fastapi", "uvicorn", "jsonschema")]
     access_contracts = {path.relative_to(root / 'contracts').as_posix(): json.loads(read(root, path.relative_to(root)))
-                        for path in sorted((root / 'contracts/access/v1').glob('*.schema.json'))}
+                        for path in sorted((root / 'contracts/access/v1').glob('*.schema.json'), key=lambda p: p.as_posix())}
     if not {'access/v1/definition.schema.json', 'access/v1/binding.schema.json'} <= set(access_contracts):
         raise ValueError('The access v1 contract set is incomplete.')
     bridge = tree(root, 'app/access_bridge.py')
@@ -307,7 +309,7 @@ def build_snapshot(root: Path) -> dict:
         },
         "contracts": contracts,
         "workflow_contracts": {path.relative_to(root / 'contracts').as_posix(): json.loads(read(root, path.relative_to(root)))
-                               for group in ('workflows', 'files', 'jobs', 'state-machines', 'registration') for path in sorted((root / 'contracts' / group).rglob('*.schema.json'))},
+                               for group in ('workflows', 'files', 'jobs', 'state-machines', 'registration') for path in sorted((root / 'contracts' / group).rglob('*.schema.json'), key=lambda p: p.as_posix())},
         "access_contracts": access_contracts,
         "access_decision_request_schema": decision_schema,
         "remote_access_templates": public_template_files(root, 'templates/remote-access-client'),
@@ -550,13 +552,13 @@ def build_outputs(root: Path) -> dict[Path, str]:
         component_appendix += block('contracts/' + name, schema)
     component_appendix += block('管理员开发调试台接口与边界', snapshot['facts']['devtools'])
     component_appendix += block('Workflow 对象分页与页面组合说明', read(root, 'contracts/workflows/v1/README.md'), 'markdown')
-    for path in sorted((root / 'templates/interaction-module').rglob('*')):
+    for path in sorted((root / 'templates/interaction-module').rglob('*'), key=lambda p: p.as_posix()):
         if path.is_file() and path.suffix in {'.json', '.md', '.tsx', '.py', '.mjs'} and not EXCLUDED_PARTS.intersection(path.relative_to(root).parts):
             suffix = {'.json': 'json', '.md': 'markdown', '.tsx': 'tsx', '.py': 'python', '.mjs': 'javascript'}[path.suffix]
             relative = path.relative_to(root)
             body = json.loads(read(root, relative)) if suffix == 'json' else read(root, relative)
             component_appendix += block(relative.as_posix(), body, suffix)
-    for path in sorted((root / 'templates/workflow-module').rglob('*')):
+    for path in sorted((root / 'templates/workflow-module').rglob('*'), key=lambda p: p.as_posix()):
         if path.is_file() and path.suffix in {'.json', '.md', '.tsx', '.py', '.mjs'} and not EXCLUDED_PARTS.intersection(path.relative_to(root).parts):
             suffix = {'.json': 'json', '.md': 'markdown', '.tsx': 'tsx', '.py': 'python', '.mjs': 'javascript'}[path.suffix]
             relative = path.relative_to(root)

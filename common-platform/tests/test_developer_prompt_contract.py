@@ -372,3 +372,15 @@ def test_outputs_cannot_be_rebuilt_without_explicit_review(isolated_root):
     with pytest.raises(ValueError):
         builder.write_outputs(root, reviewed=False)
     assert {path: (root / path).read_bytes() for path in before} == before
+
+
+def test_public_template_order_is_identical_on_windows_and_posix(tmp_path):
+    """Mixed-case filenames must follow text order, regardless of Path flavor."""
+    for relative in ('templates/sample/backend/business.py', 'templates/sample/README.md'):
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text('synthetic source\n', encoding='utf-8')
+    files = builder.public_template_files(tmp_path, 'templates/sample')
+    assert list(files) == [
+        'templates/sample/README.md', 'templates/sample/backend/business.py',
+    ]

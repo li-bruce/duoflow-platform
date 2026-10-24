@@ -1,13 +1,21 @@
 # DuoFlow Module Kit · 双行模块套件
 
-版本 **v0.01**。将业务要求整理为可在页面与对话中使用的模块，提供协议、Python/Node SDK、模板、独立检查工具和 `duoflow-module` Skill。
+版本 **v0.02**。将业务要求整理为可在页面与对话中使用、可参与平台组合的模块，提供协议、Python/Node SDK、模板、独立检查工具和 `duoflow-module` Skill。
 
 - [功能介绍页](docs/index.html) · [独立交互演示](docs/demo.html)
 - [功能与支持范围](docs/FEATURES.md) · [源码阅读](docs/ARCHITECTURE.md)
 - [开发与使用](docs/DEVELOPMENT.md) · [业务建模和持续同步](docs/OBSERVER.md)
-- [版本对应](COMPATIBILITY.md) · [v0.01 变更](CHANGELOG.md)
+- [版本对应](COMPATIBILITY.md) · [版本变更](CHANGELOG.md)
 
 主框架：[duoflow-platform](https://github.com/li-bruce/duoflow-platform)。业务建模依赖：[business-observer](https://github.com/li-bruce/SoftwareStatusObserverSkill)，精确提交和文件清单见 `business-observer.lock.json`。
+
+## 功能
+
+- **原子组件登记**：为前端组件和后端功能登记稳定编号、输入输出、事件、局部状态及业务节点映射，核对真实组件与函数。
+- **多个公开业务流**：同一模块可公开完整流程、部分流程或单项功能，声明数据操作、权限和完成条件。
+- **模块自主管理业务**：正式对象、事务和状态判断留在服务中；平台身份与范围授权通过共同协议互通。
+- **两种入口与实时观察**：页面和对话共用组件；组件实例、调用事件和正式状态分别关联到业务图。
+- **接入验证与持续同步**：1.1 双向握手实际检查运行回调；业务图和源码随修改同步，SDK 支持原子结果与状态变化测试。
 
 ## 独立准备
 

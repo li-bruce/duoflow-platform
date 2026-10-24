@@ -236,6 +236,16 @@ def test_workflow_checks_optional_interaction_attachment_and_bindings(tmp_path):
                                'completes': True, 'bindings': {'command': {'source': 'state', 'key': 'command'}}}]}
     write_json(package / 'frontend/interaction.json', attachment)
     (package / 'frontend/Component.tsx').write_text("import type {InteractionProps} from '@platform/interaction-sdk';\nexport default function Quick(p:InteractionProps){return <p>{p.surface}</p>}\n", encoding='utf-8')
+    with pytest.raises(kit.KitError):
+        kit.check(package)  # Adding a host also requires its explicit atom map.
+    from scripts.module_graph_template import graph_template
+    graph = graph_template(manifest, interactions=[attachment],
+                           workflows=kit.read_json(package, 'frontend/flow.json')['flows'])
+    write_json(package / 'backend/module-graph.json', graph)
+    registration = kit.read_json(package, 'backend/registration.json')
+    registration['module_graph'] = graph
+    registration['host_requirements']['interactions'] = [{'id': attachment['id'], 'version': attachment['version']}]
+    write_json(package / 'backend/registration.json', registration)
     assert kit.check(package)['frontend_ids'] == ['kit.review.workflow', 'kit.review.quick-create']
     attachment['actions'][0]['bindings']['command']['key'] = 'missing'
     write_json(package / 'frontend/interaction.json', attachment)
@@ -340,6 +350,8 @@ def test_installed_python_tool_uses_real_grants_csrf_and_private_restoration(tmp
 def bridge_http(runtime, sessions):
     app = FastAPI(); app.state.sessions = sessions
     app.include_router(create_access_bridge_router(runtime.access_bridge))
+    from app.runtime_observation import create_observation_router
+    app.include_router(create_observation_router(runtime.observations, lambda: {}))
 
     @app.exception_handler(PlatformError)
     async def error(request, exc):
@@ -360,8 +372,8 @@ def bridge_http(runtime, sessions):
         assert not thread.is_alive()
 
 
-def start_node(package, data, callback, token):
-    env = {**os.environ, 'PORT': '0', 'SERVICE_DATA_DIR': str(data), 'PLATFORM_SERVICE_TOKEN': token,
+def start_node(package, data, callback, token, *, port=0):
+    env = {**os.environ, 'PORT': str(port), 'SERVICE_DATA_DIR': str(data), 'PLATFORM_SERVICE_TOKEN': token,
            'PLATFORM_ACCESS_DECISION_URL': callback + '/api/v1/access/remote-decisions',
            'MODULE_PROJECTS_FILE': str(package / 'backend/projects.example.json')}
     process = subprocess.Popen([str(NODE), str(package / 'backend/server.mjs')], env=env, cwd=package,
@@ -392,7 +404,7 @@ def test_generated_node_roundtrip_real_central_grants_business_center_and_branch
     try:
         with bridge_http(runtime, sessions) as callback:
             process, url = start_node(package, tmp_path / 'business', callback, token)
-            assert httpx.get(url + '/platform/v1/manifest').status_code == 401
+            assert httpx.get(url + '/platform/v1/manifest', trust_env=False).status_code == 401
             manager.save_connection({'id': 'kit-reference', 'name': '合成参考包', 'base_url': url, 'token': token, 'timeout_seconds': 10})
             discovered = asyncio.run(manager.discover('kit-reference'))
             # Discovery remains disabled; frontend is already in the isolated tree.
@@ -422,7 +434,20 @@ def test_generated_node_roundtrip_real_central_grants_business_center_and_branch
                     from app.db import Run
                     run = db.get(Run, result['run_id'])
                     assert run.status == 'succeeded', run.error
-                    return run.result
+                    receipt, invocation_id = run.result, run.invocation_id
+                # Runtime events come from the actual Node callback, not from
+                # the test or a successful HTTP status inferred as graph state.
+                deadline = time.monotonic() + 4
+                while True:
+                    observed = asyncio.run(runtime.observations.read(actor, invocation_id))
+                    phases = {event['phase'] for event in observed['events']}
+                    if {'started', 'succeeded', 'state'} <= phases:
+                        break
+                    assert time.monotonic() < deadline, observed
+                    time.sleep(.02)
+                assert not observed['gaps']
+                assert all('input' not in event for event in observed['events'])
+                return receipt
 
             response = asyncio.run(runtime.workflows.action(owner, flow['id'], 'create',
                 {'project_id': 'P', 'title': '合成记录', 'body': '初稿'}, flow['revision'], None, 'create-reference'))
@@ -459,7 +484,7 @@ def test_generated_node_roundtrip_real_central_grants_business_center_and_branch
             ticket_request_id = secrets.token_hex(16)
             ticket = runtime.access_bridge.issue(reviewer, read_spec, ticket_request_id, 'objects.read')
             runtime.access.revoke(grants['reviewer']['id'], actor_id='manager')
-            revoked = httpx.post(url + '/platform/v1/workflow/objects.read', headers={'Authorization': 'Bearer ' + token, 'X-Platform-Access': ticket}, json={
+            revoked = httpx.post(url + '/platform/v1/workflow/objects.read', trust_env=False, headers={'Authorization': 'Bearer ' + token, 'X-Platform-Access': ticket}, json={
                 'protocol_version': '1.0', 'request_id': ticket_request_id,
                 'context': {'actor': runtime.workflows.transport._principal(reviewer)}, 'input': {'object_ref': ref}})
             assert revoked.status_code == 403, revoked.text

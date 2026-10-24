@@ -3,6 +3,7 @@ import { api, post, requestId, ApiError } from "../api";
 import { ErrorNotice, Loading } from "../ui";
 import ErrorBoundary from "../ErrorBoundary";
 import { installedStep } from "./catalog";
+import AtomicPresence from "../atoms/AtomicPresence";
 import { fileSha256, Sha256 } from "./sha256";
 import type {
   Data,
@@ -742,7 +743,24 @@ function FlowInstance({ instanceId, surface = "page", onChanged }: HostProps) {
               disabled={busy || reloading || pending || blocked.current}
               style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}
             >
-              <Content {...propsFor(id)} />
+              <AtomicPresence
+                kind="workflow"
+                instanceId={instanceId}
+                stepId={id}
+                revision={item?.revision}
+                surface={surface}
+                status={
+                  error || item?.error
+                    ? "error"
+                    : busy || pending
+                      ? "busy"
+                      : desired.current
+                        ? "editing"
+                        : "ready"
+                }
+              >
+                <Content {...propsFor(id)} />
+              </AtomicPresence>
             </fieldset>
           </Suspense>
         </ErrorBoundary>

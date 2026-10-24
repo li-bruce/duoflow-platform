@@ -1,0 +1,297 @@
+{
+  "graph_version": "1.0",
+  "module_id": "__MODULE_ID__",
+  "module_version": "1.0.0",
+  "version": "1.0.0",
+  "atoms": [
+    {
+      "id": "__MODULE_ID__.analyze.backend",
+      "kind": "backend",
+      "title": "整理与统计文本",
+      "description": "统一换行和空白，返回字符、行和空白分隔片段数量。",
+      "source": {
+        "path": "backend/handlers.py",
+        "symbol": "analyze"
+      },
+      "capability": {
+        "id": "__MODULE_ID__.analyze",
+        "version": "1.0.0"
+      }
+    },
+    {
+      "id": "__MODULE_ID__.tool.frontend",
+      "kind": "frontend",
+      "title": "__TITLE__",
+      "description": "页面和对话共用文本输入、动作和结果组件。",
+      "source": {
+        "path": "frontend/Component.tsx",
+        "symbol": "default"
+      },
+      "host": {
+        "kind": "interaction",
+        "id": "__MODULE_ID__.tool",
+        "version": "1.0.0"
+      },
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "normalized_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          },
+          "character_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20000
+          },
+          "line_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20000
+          },
+          "segment_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20000
+          }
+        },
+        "required": [
+          "normalized_text",
+          "character_count",
+          "line_count",
+          "segment_count"
+        ],
+        "additionalProperties": false
+      },
+      "state_schema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 20000
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "initial_state": {
+        "text": ""
+      },
+      "events": [
+        {
+          "id": "analyze",
+          "title": "整理与统计",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "title": "待整理文本",
+                "format": "textarea",
+                "minLength": 1,
+                "maxLength": 20000
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "normalized_text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "character_count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20000
+              },
+              "line_count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20000
+              },
+              "segment_count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20000
+              }
+            },
+            "required": [
+              "normalized_text",
+              "character_count",
+              "line_count",
+              "segment_count"
+            ],
+            "additionalProperties": false
+          },
+          "effect": "调用已登记的后端功能并显示返回结果。",
+          "state_effect": "执行中显示等待；成功后读取实际结果，失败时保留可修改内容。",
+          "capability": {
+            "id": "__MODULE_ID__.analyze",
+            "version": "1.0.0"
+          }
+        },
+        {
+          "id": "draft.change",
+          "title": "修改填写内容",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 20000
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 20000
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "effect": "更新当前使用者的填写内容。",
+          "state_effect": "个人草稿变化；正式业务对象保持原状态。"
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "__MODULE_ID__.analyze.business",
+      "title": "整理与统计文本",
+      "kind": "business",
+      "description": "整理与统计文本"
+    },
+    {
+      "id": "__MODULE_ID__.tool.frontend.view",
+      "title": "__TITLE__",
+      "kind": "business",
+      "description": "__TITLE__"
+    },
+    {
+      "id": "__MODULE_ID__.tool.frontend.idle",
+      "title": "待操作",
+      "kind": "state",
+      "description": "待操作"
+    },
+    {
+      "id": "__MODULE_ID__.tool.frontend.running",
+      "title": "执行中",
+      "kind": "state",
+      "description": "执行中"
+    },
+    {
+      "id": "__MODULE_ID__.tool.frontend.succeeded",
+      "title": "执行成功",
+      "kind": "state",
+      "description": "执行成功"
+    },
+    {
+      "id": "__MODULE_ID__.tool.frontend.failed",
+      "title": "执行失败",
+      "kind": "state",
+      "description": "执行失败"
+    }
+  ],
+  "mappings": [
+    {
+      "atom_id": "__MODULE_ID__.analyze.backend",
+      "node_id": "__MODULE_ID__.analyze.business",
+      "role": "handles"
+    },
+    {
+      "atom_id": "__MODULE_ID__.tool.frontend",
+      "node_id": "__MODULE_ID__.analyze.business",
+      "role": "handles",
+      "event_id": "analyze"
+    },
+    {
+      "atom_id": "__MODULE_ID__.tool.frontend",
+      "node_id": "__MODULE_ID__.tool.frontend.view",
+      "role": "shows"
+    }
+  ],
+  "edges": [],
+  "state_machines": [
+    {
+      "id": "__MODULE_ID__.tool.frontend.execution",
+      "scope": "execution",
+      "owner_id": "__MODULE_ID__.tool.frontend",
+      "initial": "idle",
+      "states": [
+        {
+          "id": "idle",
+          "node_id": "__MODULE_ID__.tool.frontend.idle"
+        },
+        {
+          "id": "running",
+          "node_id": "__MODULE_ID__.tool.frontend.running"
+        },
+        {
+          "id": "succeeded",
+          "node_id": "__MODULE_ID__.tool.frontend.succeeded"
+        },
+        {
+          "id": "failed",
+          "node_id": "__MODULE_ID__.tool.frontend.failed"
+        }
+      ],
+      "transitions": [
+        {
+          "id": "start",
+          "from": "idle",
+          "to": "running",
+          "event": "action.start"
+        },
+        {
+          "id": "success",
+          "from": "running",
+          "to": "succeeded",
+          "event": "action.success"
+        },
+        {
+          "id": "failure",
+          "from": "running",
+          "to": "failed",
+          "event": "action.failure"
+        },
+        {
+          "id": "again",
+          "from": "succeeded",
+          "to": "running",
+          "event": "action.start"
+        },
+        {
+          "id": "retry",
+          "from": "failed",
+          "to": "running",
+          "event": "action.start"
+        }
+      ]
+    }
+  ]
+}

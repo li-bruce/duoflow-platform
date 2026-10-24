@@ -317,6 +317,11 @@ class ConversationService:
                         self.runtime.interactions.load(db, actor, v["data"]["instance_id"])
                     elif v["type"] == "workflow":
                         self.runtime.workflows.load(db, actor, v["data"]["instance_id"])
+                    elif v["type"] == "composition":
+                        snapshot = self.runtime.compositions.load(actor, v["data"]["run_id"])
+                        self.runtime.compositions.check_pins(actor, snapshot)
+                    elif v["type"] == "composition-start":
+                        self.runtime.compositions.definition(db, actor, v["data"]["definition_id"])
                     elif v["type"] == "workspace":
                         v["data"] = self.runtime.refresh_workspace(
                             v["data"],
@@ -645,6 +650,10 @@ class ConversationService:
                 conv.updated_at = now()
             # The engine may propose a persistent skill flow, but never executes a capability.
             prepared = self.runtime.workflows.guidance(actor, conversation_id, safe_content.strip())
+            if prepared is None:
+                prepared = self.runtime.module_catalog.guidance(actor, safe_content.strip())
+            if prepared is None:
+                prepared = self.runtime.compositions.guidance(actor, safe_content.strip())
             component = None
             catalog = self.runtime.interactions.catalog(actor)["items"]
             if safe_content.strip().startswith("/component "):

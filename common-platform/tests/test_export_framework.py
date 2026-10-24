@@ -45,14 +45,14 @@ def test_private_runtime_files_and_unlisted_text_are_not_exported(tmp_path, monk
 def test_framework_explanation_sources_travel_with_export():
     reference = ROOT / 'web/src/developer-guide/reference.ts'
     exported = set(exporter.source_files(ROOT))
-    imports = re.findall(r"from '([^']+)\?raw'", reference.read_text(encoding='utf-8'))
+    imports = re.findall(r"from [\"']([^\"']+)\?raw[\"']", reference.read_text(encoding='utf-8'))
     assert len(imports) == 1
     for relative in imports:
         source = (reference.parent / relative).resolve()
         assert source.is_file()
         assert source in {path.resolve() for path in exported}
     text = reference.read_text(encoding='utf-8') + (reference.parent / 'composition.ts').read_text(encoding='utf-8')
-    references = set(re.findall(r"'((?:app|web/src|extensions|flows|contracts|docs|tests)/[^']+)'", text))
+    references = set(re.findall(r"[\"']((?:app|web/src|extensions|flows|contracts|docs|tests)/[^\"']+)[\"']", text))
     assert len(references) >= 35
     for relative in references:
         assert (ROOT / relative).is_file(), relative

@@ -4,6 +4,8 @@
 
 稳定边界：
 
+测试辅助文件 `graph-testing.mjs` 提供 `assertTransition(graph, machineId, before, event, after)` 与 `assertAtomResult(graph, atomId, inputs, output, validate)`。先运行真实业务函数，再用实际结果核对状态边与原子输入输出。后端原子另以第六个参数传入实际 manifest，按能力 ID 和版本读取 Schema。`validate(schema, value)` 校验失败时应抛出异常。模板的 HTTP/SQLite 测试已把真实提交、审核结果与状态图核对，权限及数据库结果仍分别断言。
+
 | 接口 | 职责 |
 | --- | --- |
 | `createModuleServer({manifest, registration, token, handlers, workflowHandlers})` | 固定 HTTP 路径、恒定时间 Bearer 校验、64 KiB 输入、invoke 1.1 / workflow 1.0 包络、能力输入输出校验和安全错误；通过真实函数表分派 |

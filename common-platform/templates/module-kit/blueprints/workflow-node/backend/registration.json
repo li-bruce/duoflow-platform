@@ -1,5 +1,5 @@
 {
-  "registration_version": "1.0",
+  "registration_version": "1.1",
   "module_id": "__MODULE_ID__",
   "module_version": "1.0.0",
   "permissions": {
@@ -265,5 +265,1640 @@
   "workflow_operations": [
     "objects.list",
     "objects.read"
-  ]
+  ],
+  "module_graph": {
+    "graph_version": "1.0",
+    "module_id": "__MODULE_ID__",
+    "module_version": "1.0.0",
+    "version": "1.0.0",
+    "atoms": [
+      {
+        "id": "__MODULE_ID__.create.backend",
+        "kind": "backend",
+        "title": "创建记录",
+        "description": "创建记录；使用中央范围授权与服务端项目事实。",
+        "source": {
+          "path": "backend/business.mjs",
+          "symbol": "createBusiness.invoke"
+        },
+        "capability": {
+          "id": "__MODULE_ID__.create",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "__MODULE_ID__.edit.backend",
+        "kind": "backend",
+        "title": "编辑记录",
+        "description": "编辑记录；使用中央范围授权与服务端项目事实。",
+        "source": {
+          "path": "backend/business.mjs",
+          "symbol": "createBusiness.invoke"
+        },
+        "capability": {
+          "id": "__MODULE_ID__.edit",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "__MODULE_ID__.submit.backend",
+        "kind": "backend",
+        "title": "提交审核",
+        "description": "提交审核；使用中央范围授权与服务端项目事实。",
+        "source": {
+          "path": "backend/business.mjs",
+          "symbol": "createBusiness.invoke"
+        },
+        "capability": {
+          "id": "__MODULE_ID__.submit",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "__MODULE_ID__.approve.backend",
+        "kind": "backend",
+        "title": "审核通过",
+        "description": "审核通过；使用中央范围授权与服务端项目事实。",
+        "source": {
+          "path": "backend/business.mjs",
+          "symbol": "createBusiness.invoke"
+        },
+        "capability": {
+          "id": "__MODULE_ID__.approve",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "__MODULE_ID__.read.backend",
+        "kind": "backend",
+        "title": "读取记录",
+        "description": "读取记录；使用中央范围授权与服务端项目事实。",
+        "source": {
+          "path": "backend/business.mjs",
+          "symbol": "createBusiness.invoke"
+        },
+        "capability": {
+          "id": "__MODULE_ID__.read",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "__MODULE_ID__.list.backend",
+        "kind": "backend",
+        "title": "列出记录",
+        "description": "列出记录；使用中央范围授权与服务端项目事实。",
+        "source": {
+          "path": "backend/business.mjs",
+          "symbol": "createBusiness.invoke"
+        },
+        "capability": {
+          "id": "__MODULE_ID__.list",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "__MODULE_ID__.workflow.pick.frontend",
+        "kind": "frontend",
+        "title": "选择或创建",
+        "description": "只列出当前范围可读的记录；项目编号由服务端配置确认。",
+        "source": {
+          "path": "frontend/steps.tsx",
+          "symbol": "Picker"
+        },
+        "host": {
+          "kind": "workflow_step",
+          "id": "__MODULE_ID__.workflow",
+          "version": "1.0.0",
+          "step_id": "pick"
+        },
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "projection": {
+              "type": "object",
+              "properties": {
+                "object_ref": {
+                  "type": "object",
+                  "properties": {
+                    "object_type": {
+                      "type": "string",
+                      "const": "__MODULE_ID__.record"
+                    },
+                    "object_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "object_type",
+                    "object_id"
+                  ],
+                  "additionalProperties": false
+                },
+                "revision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "draft",
+                    "submitted",
+                    "approved"
+                  ]
+                },
+                "data": {
+                  "type": "object"
+                },
+                "allowed_actions": {
+                  "type": "array",
+                  "maxItems": 3,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "edit",
+                      "submit",
+                      "approve"
+                    ]
+                  }
+                },
+                "jobs": {
+                  "type": "array",
+                  "maxItems": 0,
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "updated_at": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 60
+                }
+              },
+              "required": [
+                "object_ref",
+                "revision",
+                "state",
+                "data",
+                "allowed_actions",
+                "jobs",
+                "updated_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "projection"
+          ],
+          "additionalProperties": false
+        },
+        "output_schema": {
+          "type": "object",
+          "properties": {
+            "projection": {
+              "type": "object",
+              "properties": {
+                "object_ref": {
+                  "type": "object",
+                  "properties": {
+                    "object_type": {
+                      "type": "string",
+                      "const": "__MODULE_ID__.record"
+                    },
+                    "object_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "object_type",
+                    "object_id"
+                  ],
+                  "additionalProperties": false
+                },
+                "revision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "draft",
+                    "submitted",
+                    "approved"
+                  ]
+                },
+                "data": {
+                  "type": "object"
+                },
+                "allowed_actions": {
+                  "type": "array",
+                  "maxItems": 3,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "edit",
+                      "submit",
+                      "approve"
+                    ]
+                  }
+                },
+                "jobs": {
+                  "type": "array",
+                  "maxItems": 0,
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "updated_at": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 60
+                }
+              },
+              "required": [
+                "object_ref",
+                "revision",
+                "state",
+                "data",
+                "allowed_actions",
+                "jobs",
+                "updated_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "projection"
+          ],
+          "additionalProperties": false
+        },
+        "state_schema": {
+          "type": "object",
+          "properties": {
+            "project_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "body": {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 4000
+            }
+          },
+          "additionalProperties": false
+        },
+        "initial_state": {},
+        "events": [
+          {
+            "id": "create",
+            "title": "创建记录",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "project_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$"
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "body": {
+                  "type": "string",
+                  "minLength": 0,
+                  "maxLength": 4000
+                }
+              },
+              "required": [
+                "project_id",
+                "title",
+                "body"
+              ],
+              "additionalProperties": false
+            },
+            "output_schema": {
+              "type": "object",
+              "properties": {
+                "projection": {
+                  "type": "object",
+                  "properties": {
+                    "object_ref": {
+                      "type": "object",
+                      "properties": {
+                        "object_type": {
+                          "type": "string",
+                          "const": "__MODULE_ID__.record"
+                        },
+                        "object_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        }
+                      },
+                      "required": [
+                        "object_type",
+                        "object_id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "draft",
+                        "submitted",
+                        "approved"
+                      ]
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "allowed_actions": {
+                      "type": "array",
+                      "maxItems": 3,
+                      "uniqueItems": true,
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "edit",
+                          "submit",
+                          "approve"
+                        ]
+                      }
+                    },
+                    "jobs": {
+                      "type": "array",
+                      "maxItems": 0,
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 60
+                    }
+                  },
+                  "required": [
+                    "object_ref",
+                    "revision",
+                    "state",
+                    "data",
+                    "allowed_actions",
+                    "jobs",
+                    "updated_at"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "projection"
+              ],
+              "additionalProperties": false
+            },
+            "effect": "调用已登记的后端功能并显示返回结果。",
+            "state_effect": "执行中显示等待；成功后读取实际结果，失败时保留可修改内容。",
+            "capability": {
+              "id": "__MODULE_ID__.create",
+              "version": "1.0.0"
+            }
+          },
+          {
+            "id": "draft.change",
+            "title": "修改填写内容",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "project_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$"
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "body": {
+                  "type": "string",
+                  "minLength": 0,
+                  "maxLength": 4000
+                }
+              },
+              "additionalProperties": false
+            },
+            "output_schema": {
+              "type": "object",
+              "properties": {
+                "project_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$"
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "body": {
+                  "type": "string",
+                  "minLength": 0,
+                  "maxLength": 4000
+                }
+              },
+              "additionalProperties": false
+            },
+            "effect": "更新当前使用者的填写内容。",
+            "state_effect": "个人草稿变化；正式业务对象保持原状态。"
+          }
+        ]
+      },
+      {
+        "id": "__MODULE_ID__.workflow.edit.frontend",
+        "kind": "frontend",
+        "title": "填写与提交",
+        "description": "只允许作者修改草稿。提交以后记录冻结。",
+        "source": {
+          "path": "frontend/steps.tsx",
+          "symbol": "Editor"
+        },
+        "host": {
+          "kind": "workflow_step",
+          "id": "__MODULE_ID__.workflow",
+          "version": "1.0.0",
+          "step_id": "edit"
+        },
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "projection": {
+              "type": "object",
+              "properties": {
+                "object_ref": {
+                  "type": "object",
+                  "properties": {
+                    "object_type": {
+                      "type": "string",
+                      "const": "__MODULE_ID__.record"
+                    },
+                    "object_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "object_type",
+                    "object_id"
+                  ],
+                  "additionalProperties": false
+                },
+                "revision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "draft",
+                    "submitted",
+                    "approved"
+                  ]
+                },
+                "data": {
+                  "type": "object"
+                },
+                "allowed_actions": {
+                  "type": "array",
+                  "maxItems": 3,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "edit",
+                      "submit",
+                      "approve"
+                    ]
+                  }
+                },
+                "jobs": {
+                  "type": "array",
+                  "maxItems": 0,
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "updated_at": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 60
+                }
+              },
+              "required": [
+                "object_ref",
+                "revision",
+                "state",
+                "data",
+                "allowed_actions",
+                "jobs",
+                "updated_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "projection"
+          ],
+          "additionalProperties": false
+        },
+        "output_schema": {
+          "type": "object",
+          "properties": {
+            "projection": {
+              "type": "object",
+              "properties": {
+                "object_ref": {
+                  "type": "object",
+                  "properties": {
+                    "object_type": {
+                      "type": "string",
+                      "const": "__MODULE_ID__.record"
+                    },
+                    "object_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "object_type",
+                    "object_id"
+                  ],
+                  "additionalProperties": false
+                },
+                "revision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "draft",
+                    "submitted",
+                    "approved"
+                  ]
+                },
+                "data": {
+                  "type": "object"
+                },
+                "allowed_actions": {
+                  "type": "array",
+                  "maxItems": 3,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "edit",
+                      "submit",
+                      "approve"
+                    ]
+                  }
+                },
+                "jobs": {
+                  "type": "array",
+                  "maxItems": 0,
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "updated_at": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 60
+                }
+              },
+              "required": [
+                "object_ref",
+                "revision",
+                "state",
+                "data",
+                "allowed_actions",
+                "jobs",
+                "updated_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "projection"
+          ],
+          "additionalProperties": false
+        },
+        "state_schema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "body": {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 4000
+            }
+          },
+          "additionalProperties": false
+        },
+        "initial_state": {},
+        "events": [
+          {
+            "id": "edit",
+            "title": "编辑记录",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "body": {
+                  "type": "string",
+                  "minLength": 0,
+                  "maxLength": 4000
+                }
+              },
+              "required": [
+                "title",
+                "body"
+              ],
+              "additionalProperties": false
+            },
+            "output_schema": {
+              "type": "object",
+              "properties": {
+                "projection": {
+                  "type": "object",
+                  "properties": {
+                    "object_ref": {
+                      "type": "object",
+                      "properties": {
+                        "object_type": {
+                          "type": "string",
+                          "const": "__MODULE_ID__.record"
+                        },
+                        "object_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        }
+                      },
+                      "required": [
+                        "object_type",
+                        "object_id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "draft",
+                        "submitted",
+                        "approved"
+                      ]
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "allowed_actions": {
+                      "type": "array",
+                      "maxItems": 3,
+                      "uniqueItems": true,
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "edit",
+                          "submit",
+                          "approve"
+                        ]
+                      }
+                    },
+                    "jobs": {
+                      "type": "array",
+                      "maxItems": 0,
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 60
+                    }
+                  },
+                  "required": [
+                    "object_ref",
+                    "revision",
+                    "state",
+                    "data",
+                    "allowed_actions",
+                    "jobs",
+                    "updated_at"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "projection"
+              ],
+              "additionalProperties": false
+            },
+            "effect": "调用已登记的后端功能并显示返回结果。",
+            "state_effect": "执行中显示等待；成功后读取实际结果，失败时保留可修改内容。",
+            "capability": {
+              "id": "__MODULE_ID__.edit",
+              "version": "1.0.0"
+            }
+          },
+          {
+            "id": "submit",
+            "title": "提交审核",
+            "input_schema": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            },
+            "output_schema": {
+              "type": "object",
+              "properties": {
+                "projection": {
+                  "type": "object",
+                  "properties": {
+                    "object_ref": {
+                      "type": "object",
+                      "properties": {
+                        "object_type": {
+                          "type": "string",
+                          "const": "__MODULE_ID__.record"
+                        },
+                        "object_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        }
+                      },
+                      "required": [
+                        "object_type",
+                        "object_id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "draft",
+                        "submitted",
+                        "approved"
+                      ]
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "allowed_actions": {
+                      "type": "array",
+                      "maxItems": 3,
+                      "uniqueItems": true,
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "edit",
+                          "submit",
+                          "approve"
+                        ]
+                      }
+                    },
+                    "jobs": {
+                      "type": "array",
+                      "maxItems": 0,
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 60
+                    }
+                  },
+                  "required": [
+                    "object_ref",
+                    "revision",
+                    "state",
+                    "data",
+                    "allowed_actions",
+                    "jobs",
+                    "updated_at"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "projection"
+              ],
+              "additionalProperties": false
+            },
+            "effect": "调用已登记的后端功能并显示返回结果。",
+            "state_effect": "执行中显示等待；成功后读取实际结果，失败时保留可修改内容。",
+            "capability": {
+              "id": "__MODULE_ID__.submit",
+              "version": "1.0.0"
+            }
+          },
+          {
+            "id": "draft.change",
+            "title": "修改填写内容",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "body": {
+                  "type": "string",
+                  "minLength": 0,
+                  "maxLength": 4000
+                }
+              },
+              "additionalProperties": false
+            },
+            "output_schema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "body": {
+                  "type": "string",
+                  "minLength": 0,
+                  "maxLength": 4000
+                }
+              },
+              "additionalProperties": false
+            },
+            "effect": "更新当前使用者的填写内容。",
+            "state_effect": "个人草稿变化；正式业务对象保持原状态。"
+          }
+        ]
+      },
+      {
+        "id": "__MODULE_ID__.workflow.review.frontend",
+        "kind": "frontend",
+        "title": "审核与结果",
+        "description": "审核人与作者必须不同。导航步骤不会自动执行审批。",
+        "source": {
+          "path": "frontend/steps.tsx",
+          "symbol": "Review"
+        },
+        "host": {
+          "kind": "workflow_step",
+          "id": "__MODULE_ID__.workflow",
+          "version": "1.0.0",
+          "step_id": "review"
+        },
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "projection": {
+              "type": "object",
+              "properties": {
+                "object_ref": {
+                  "type": "object",
+                  "properties": {
+                    "object_type": {
+                      "type": "string",
+                      "const": "__MODULE_ID__.record"
+                    },
+                    "object_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "object_type",
+                    "object_id"
+                  ],
+                  "additionalProperties": false
+                },
+                "revision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "draft",
+                    "submitted",
+                    "approved"
+                  ]
+                },
+                "data": {
+                  "type": "object"
+                },
+                "allowed_actions": {
+                  "type": "array",
+                  "maxItems": 3,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "edit",
+                      "submit",
+                      "approve"
+                    ]
+                  }
+                },
+                "jobs": {
+                  "type": "array",
+                  "maxItems": 0,
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "updated_at": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 60
+                }
+              },
+              "required": [
+                "object_ref",
+                "revision",
+                "state",
+                "data",
+                "allowed_actions",
+                "jobs",
+                "updated_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "projection"
+          ],
+          "additionalProperties": false
+        },
+        "output_schema": {
+          "type": "object",
+          "properties": {
+            "projection": {
+              "type": "object",
+              "properties": {
+                "object_ref": {
+                  "type": "object",
+                  "properties": {
+                    "object_type": {
+                      "type": "string",
+                      "const": "__MODULE_ID__.record"
+                    },
+                    "object_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "object_type",
+                    "object_id"
+                  ],
+                  "additionalProperties": false
+                },
+                "revision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "draft",
+                    "submitted",
+                    "approved"
+                  ]
+                },
+                "data": {
+                  "type": "object"
+                },
+                "allowed_actions": {
+                  "type": "array",
+                  "maxItems": 3,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "edit",
+                      "submit",
+                      "approve"
+                    ]
+                  }
+                },
+                "jobs": {
+                  "type": "array",
+                  "maxItems": 0,
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "updated_at": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 60
+                }
+              },
+              "required": [
+                "object_ref",
+                "revision",
+                "state",
+                "data",
+                "allowed_actions",
+                "jobs",
+                "updated_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "projection"
+          ],
+          "additionalProperties": false
+        },
+        "state_schema": {
+          "type": "object",
+          "properties": {
+            "note": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            }
+          },
+          "additionalProperties": false
+        },
+        "initial_state": {},
+        "events": [
+          {
+            "id": "approve",
+            "title": "审核通过",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "note": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1000
+                }
+              },
+              "required": [
+                "note"
+              ],
+              "additionalProperties": false
+            },
+            "output_schema": {
+              "type": "object",
+              "properties": {
+                "projection": {
+                  "type": "object",
+                  "properties": {
+                    "object_ref": {
+                      "type": "object",
+                      "properties": {
+                        "object_type": {
+                          "type": "string",
+                          "const": "__MODULE_ID__.record"
+                        },
+                        "object_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        }
+                      },
+                      "required": [
+                        "object_type",
+                        "object_id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "draft",
+                        "submitted",
+                        "approved"
+                      ]
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "allowed_actions": {
+                      "type": "array",
+                      "maxItems": 3,
+                      "uniqueItems": true,
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "edit",
+                          "submit",
+                          "approve"
+                        ]
+                      }
+                    },
+                    "jobs": {
+                      "type": "array",
+                      "maxItems": 0,
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 60
+                    }
+                  },
+                  "required": [
+                    "object_ref",
+                    "revision",
+                    "state",
+                    "data",
+                    "allowed_actions",
+                    "jobs",
+                    "updated_at"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "projection"
+              ],
+              "additionalProperties": false
+            },
+            "effect": "调用已登记的后端功能并显示返回结果。",
+            "state_effect": "执行中显示等待；成功后读取实际结果，失败时保留可修改内容。",
+            "capability": {
+              "id": "__MODULE_ID__.approve",
+              "version": "1.0.0"
+            }
+          },
+          {
+            "id": "draft.change",
+            "title": "修改填写内容",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "note": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1000
+                }
+              },
+              "additionalProperties": false
+            },
+            "output_schema": {
+              "type": "object",
+              "properties": {
+                "note": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1000
+                }
+              },
+              "additionalProperties": false
+            },
+            "effect": "更新当前使用者的填写内容。",
+            "state_effect": "个人草稿变化；正式业务对象保持原状态。"
+          }
+        ]
+      }
+    ],
+    "nodes": [
+      {
+        "id": "__MODULE_ID__.create.business",
+        "title": "创建记录",
+        "kind": "business",
+        "description": "创建记录"
+      },
+      {
+        "id": "__MODULE_ID__.edit.business",
+        "title": "编辑记录",
+        "kind": "business",
+        "description": "编辑记录"
+      },
+      {
+        "id": "__MODULE_ID__.submit.business",
+        "title": "提交审核",
+        "kind": "business",
+        "description": "提交审核"
+      },
+      {
+        "id": "__MODULE_ID__.approve.business",
+        "title": "审核通过",
+        "kind": "business",
+        "description": "审核通过"
+      },
+      {
+        "id": "__MODULE_ID__.read.business",
+        "title": "读取记录",
+        "kind": "business",
+        "description": "读取记录"
+      },
+      {
+        "id": "__MODULE_ID__.list.business",
+        "title": "列出记录",
+        "kind": "business",
+        "description": "列出记录"
+      },
+      {
+        "id": "__MODULE_ID__.workflow.pick.frontend.view",
+        "title": "选择或创建",
+        "kind": "business",
+        "description": "选择或创建"
+      },
+      {
+        "id": "__MODULE_ID__.workflow.edit.frontend.view",
+        "title": "填写与提交",
+        "kind": "business",
+        "description": "填写与提交"
+      },
+      {
+        "id": "__MODULE_ID__.workflow.review.frontend.view",
+        "title": "审核与结果",
+        "kind": "business",
+        "description": "审核与结果"
+      },
+      {
+        "id": "__MODULE_ID__.workflow.state.draft",
+        "title": "草稿",
+        "kind": "state",
+        "description": "草稿"
+      },
+      {
+        "id": "__MODULE_ID__.workflow.state.submitted",
+        "title": "待审核",
+        "kind": "state",
+        "description": "待审核"
+      },
+      {
+        "id": "__MODULE_ID__.workflow.state.approved",
+        "title": "已通过",
+        "kind": "state",
+        "description": "已通过"
+      }
+    ],
+    "mappings": [
+      {
+        "atom_id": "__MODULE_ID__.create.backend",
+        "node_id": "__MODULE_ID__.create.business",
+        "role": "handles"
+      },
+      {
+        "atom_id": "__MODULE_ID__.edit.backend",
+        "node_id": "__MODULE_ID__.edit.business",
+        "role": "handles"
+      },
+      {
+        "atom_id": "__MODULE_ID__.submit.backend",
+        "node_id": "__MODULE_ID__.submit.business",
+        "role": "handles"
+      },
+      {
+        "atom_id": "__MODULE_ID__.approve.backend",
+        "node_id": "__MODULE_ID__.approve.business",
+        "role": "handles"
+      },
+      {
+        "atom_id": "__MODULE_ID__.read.backend",
+        "node_id": "__MODULE_ID__.read.business",
+        "role": "handles"
+      },
+      {
+        "atom_id": "__MODULE_ID__.list.backend",
+        "node_id": "__MODULE_ID__.list.business",
+        "role": "handles"
+      },
+      {
+        "atom_id": "__MODULE_ID__.workflow.pick.frontend",
+        "node_id": "__MODULE_ID__.create.business",
+        "role": "handles",
+        "event_id": "create"
+      },
+      {
+        "atom_id": "__MODULE_ID__.workflow.pick.frontend",
+        "node_id": "__MODULE_ID__.workflow.pick.frontend.view",
+        "role": "shows"
+      },
+      {
+        "atom_id": "__MODULE_ID__.workflow.edit.frontend",
+        "node_id": "__MODULE_ID__.edit.business",
+        "role": "handles",
+        "event_id": "edit"
+      },
+      {
+        "atom_id": "__MODULE_ID__.workflow.edit.frontend",
+        "node_id": "__MODULE_ID__.submit.business",
+        "role": "handles",
+        "event_id": "submit"
+      },
+      {
+        "atom_id": "__MODULE_ID__.workflow.edit.frontend",
+        "node_id": "__MODULE_ID__.workflow.edit.frontend.view",
+        "role": "shows"
+      },
+      {
+        "atom_id": "__MODULE_ID__.workflow.review.frontend",
+        "node_id": "__MODULE_ID__.approve.business",
+        "role": "handles",
+        "event_id": "approve"
+      },
+      {
+        "atom_id": "__MODULE_ID__.workflow.review.frontend",
+        "node_id": "__MODULE_ID__.workflow.review.frontend.view",
+        "role": "shows"
+      }
+    ],
+    "edges": [
+      {
+        "id": "__MODULE_ID__.workflow.save-draft",
+        "from": "__MODULE_ID__.workflow.state.draft",
+        "to": "__MODULE_ID__.workflow.state.draft",
+        "kind": "transition",
+        "title": "保存草稿"
+      },
+      {
+        "id": "__MODULE_ID__.workflow.submit-draft",
+        "from": "__MODULE_ID__.workflow.state.draft",
+        "to": "__MODULE_ID__.workflow.state.submitted",
+        "kind": "transition",
+        "title": "提交审核"
+      },
+      {
+        "id": "__MODULE_ID__.workflow.approve-submitted",
+        "from": "__MODULE_ID__.workflow.state.submitted",
+        "to": "__MODULE_ID__.workflow.state.approved",
+        "kind": "transition",
+        "title": "审核通过"
+      }
+    ],
+    "state_machines": [
+      {
+        "id": "__MODULE_ID__.record-lifecycle",
+        "scope": "business",
+        "owner_id": "__MODULE_ID__.workflow",
+        "initial": "draft",
+        "states": [
+          {
+            "id": "draft",
+            "node_id": "__MODULE_ID__.workflow.state.draft"
+          },
+          {
+            "id": "submitted",
+            "node_id": "__MODULE_ID__.workflow.state.submitted"
+          },
+          {
+            "id": "approved",
+            "node_id": "__MODULE_ID__.workflow.state.approved"
+          }
+        ],
+        "transitions": [
+          {
+            "id": "save-draft",
+            "from": "draft",
+            "to": "draft",
+            "event": "edit"
+          },
+          {
+            "id": "submit-draft",
+            "from": "draft",
+            "to": "submitted",
+            "event": "submit"
+          },
+          {
+            "id": "approve-submitted",
+            "from": "submitted",
+            "to": "approved",
+            "event": "approve"
+          }
+        ]
+      }
+    ]
+  },
+  "flow_exports": {
+    "exports_version": "1.0",
+    "module_id": "__MODULE_ID__",
+    "module_version": "1.0.0",
+    "flows": [
+      {
+        "id": "__MODULE_ID__.create.public",
+        "version": "1.0.0",
+        "title": "创建记录",
+        "description": "创建记录；使用中央范围授权与服务端项目事实。",
+        "entry": {
+          "kind": "capability",
+          "id": "__MODULE_ID__.create",
+          "version": "1.0.0"
+        },
+        "node_ids": [
+          "__MODULE_ID__.create.business"
+        ],
+        "required_permissions": [
+          "__MODULE_ID__.create"
+        ],
+        "data_access": [
+          {
+            "object_id": "__MODULE_ID__.record",
+            "operations": [
+              "create"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "__MODULE_ID__.edit.public",
+        "version": "1.0.0",
+        "title": "编辑记录",
+        "description": "编辑记录；使用中央范围授权与服务端项目事实。",
+        "entry": {
+          "kind": "capability",
+          "id": "__MODULE_ID__.edit",
+          "version": "1.0.0"
+        },
+        "node_ids": [
+          "__MODULE_ID__.edit.business"
+        ],
+        "required_permissions": [
+          "__MODULE_ID__.edit"
+        ],
+        "data_access": [
+          {
+            "object_id": "__MODULE_ID__.record",
+            "operations": [
+              "update"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "__MODULE_ID__.submit.public",
+        "version": "1.0.0",
+        "title": "提交审核",
+        "description": "提交审核；使用中央范围授权与服务端项目事实。",
+        "entry": {
+          "kind": "capability",
+          "id": "__MODULE_ID__.submit",
+          "version": "1.0.0"
+        },
+        "node_ids": [
+          "__MODULE_ID__.submit.business"
+        ],
+        "required_permissions": [
+          "__MODULE_ID__.submit"
+        ],
+        "data_access": []
+      },
+      {
+        "id": "__MODULE_ID__.approve.public",
+        "version": "1.0.0",
+        "title": "审核通过",
+        "description": "审核通过；使用中央范围授权与服务端项目事实。",
+        "entry": {
+          "kind": "capability",
+          "id": "__MODULE_ID__.approve",
+          "version": "1.0.0"
+        },
+        "node_ids": [
+          "__MODULE_ID__.approve.business"
+        ],
+        "required_permissions": [
+          "__MODULE_ID__.approve"
+        ],
+        "data_access": []
+      },
+      {
+        "id": "__MODULE_ID__.read.public",
+        "version": "1.0.0",
+        "title": "读取记录",
+        "description": "读取记录；使用中央范围授权与服务端项目事实。",
+        "entry": {
+          "kind": "capability",
+          "id": "__MODULE_ID__.read",
+          "version": "1.0.0"
+        },
+        "node_ids": [
+          "__MODULE_ID__.read.business"
+        ],
+        "required_permissions": [
+          "__MODULE_ID__.read"
+        ],
+        "data_access": [
+          {
+            "object_id": "__MODULE_ID__.record",
+            "operations": [
+              "read"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "__MODULE_ID__.list.public",
+        "version": "1.0.0",
+        "title": "列出记录",
+        "description": "列出记录；使用中央范围授权与服务端项目事实。",
+        "entry": {
+          "kind": "capability",
+          "id": "__MODULE_ID__.list",
+          "version": "1.0.0"
+        },
+        "node_ids": [
+          "__MODULE_ID__.list.business"
+        ],
+        "required_permissions": [
+          "__MODULE_ID__.read"
+        ],
+        "data_access": [
+          {
+            "object_id": "__MODULE_ID__.record",
+            "operations": [
+              "list"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "__MODULE_ID__.workflow.public",
+        "version": "1.0.0",
+        "title": "__TITLE__",
+        "description": "选择项目记录，填写并提交，由另一位具有相同范围授权的审核人办理。",
+        "entry": {
+          "kind": "workflow",
+          "id": "__MODULE_ID__.workflow",
+          "version": "1.0.0",
+          "completed_states": [
+            "approved"
+          ]
+        },
+        "node_ids": [
+          "__MODULE_ID__.approve.business",
+          "__MODULE_ID__.create.business",
+          "__MODULE_ID__.edit.business",
+          "__MODULE_ID__.read.business",
+          "__MODULE_ID__.submit.business"
+        ],
+        "required_permissions": [
+          "__MODULE_ID__.read"
+        ],
+        "data_access": [
+          {
+            "object_id": "__MODULE_ID__.record",
+            "operations": [
+              "create",
+              "read",
+              "update"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "runtime_sync": {
+    "version": "1.0",
+    "transport": "callback",
+    "authentication": "call_ticket"
+  }
 }

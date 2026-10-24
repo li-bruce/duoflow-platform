@@ -19,7 +19,7 @@ import textwrap
 
 ROOT = Path(__file__).resolve().parents[1]
 OVERLAYS = ROOT / "distribution"
-VERSION = "v0.01"
+VERSION = "v0.02"
 EXCLUDED = {
     ".git",
     ".venv",
@@ -31,8 +31,8 @@ EXCLUDED = {
     ".runtime",
 }
 DESCRIPTIONS = {
-    "platform": "DuoFlow 双行主框架：统一模块接入、身份与范围授权，支持页面和对话共用业务组件、状态恢复与开发调试。",
-    "module-kit": "DuoFlow 模块开发套件：提供接入协议、Python/Node SDK、模块模板、校验工具与 duoflow-module Skill，衔接 business-observer 业务建模和持续验证。",
+    "platform": "DuoFlow 双行主框架：管理微服务、身份与范围权限，连接模块业务和数据，在页面与对话中继续办理并查看整体业务图。",
+    "module-kit": "DuoFlow 模块套件：提供原子组件登记、业务流公开、Python/Node SDK、模板和接入校验，duoflow-module Skill 衔接 business-observer 建模与持续同步。",
 }
 
 
@@ -97,6 +97,8 @@ def validators(target: Path):
         "workspace_contract",
         "registration_contract",
         "state_machines",
+        "module_graph",
+        "flow_exports",
     )
     for name in full:
         write(base / (name + ".py"), (ROOT / f"app/{name}.py").read_text(encoding="utf-8-sig"))
@@ -149,6 +151,10 @@ def build_kit(target: Path):
         .read_text(encoding="utf-8-sig")
         .replace("from app.", "from duoflow_validation."),
     )
+    write(target / 'scripts/module_graph_template.py',
+          (ROOT / 'scripts/module_graph_template.py').read_text(encoding='utf-8'))
+    write(target / 'scripts/flow_exports_template.py',
+          (ROOT / 'scripts/flow_exports_template.py').read_text(encoding='utf-8').replace('from app.', 'from duoflow_validation.'))
     validators(target)
     copy_tree(OVERLAYS / "module-kit", target)
     for name in ("site.css", "demo.js", "demo.html"):
@@ -162,6 +168,8 @@ def build_kit(target: Path):
         target / "docs/模块框架说明.md", (ROOT / "docs/模块框架说明.md").read_text(encoding="utf-8")
     )
     write(target / "docs/主框架说明.md", (ROOT / "docs/主框架说明.md").read_text(encoding="utf-8"))
+    write(target / "docs/原子组件与公开业务流.md", (ROOT / "docs/原子组件与公开业务流.md").read_text(encoding="utf-8"))
+    write(target / "docs/组合业务运行与角色.md", (ROOT / "docs/组合业务运行与角色.md").read_text(encoding="utf-8"))
     for name in ('通用框架架构与代码地图.md', '模块开发与调试说明书.md', '框架迁移与AI交接指南.md'):
         write(target / 'docs' / name, (ROOT / 'docs' / name).read_text(encoding='utf-8'))
     sources = (
@@ -174,6 +182,8 @@ def build_kit(target: Path):
             "workspace_contract",
             "registration_contract",
             "state_machines",
+            "module_graph",
+            "flow_exports",
         ),
     )
     write(

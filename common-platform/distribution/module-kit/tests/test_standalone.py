@@ -67,8 +67,7 @@ class StandaloneTests(unittest.TestCase):
         package = self.package()
         path = package / "backend/handlers.py"
         path.write_text(
-            'raise RuntimeError("must not execute")\n'
-            + path.read_text(encoding="utf-8"),
+            'raise RuntimeError("must not execute")\n' + path.read_text(encoding="utf-8"),
             encoding="utf-8",
         )
         self.assertFalse(kit.check(package)["executed_supplier_code"])
@@ -89,24 +88,47 @@ class StandaloneTests(unittest.TestCase):
             kit.check(package)
 
     def mapping(self, package):
-        caps = json.loads(
-            (package / "backend/manifest.json").read_text(encoding="utf-8")
-        )["capabilities"]
+        caps = json.loads((package / "backend/manifest.json").read_text(encoding="utf-8"))[
+            "capabilities"
+        ]
         for name in ("discovery.json", "intent.json", "acceptance.json"):
             (package / name).write_text("{}")
+        graph = json.loads((package / "backend/module-graph.json").read_text(encoding="utf-8"))
+        atomic_nodes = {
+            atom["id"]: sorted(
+                {m["node_id"] for m in graph["mappings"] if m["atom_id"] == atom["id"]}
+            )
+            for atom in graph["atoms"]
+        }
         (package / "behavior.json").write_text(
             json.dumps(
-                {"schema_version": 3, "nodes": [{"id": "operation", "kind": "action"}]}
+                {
+                    "schema_version": 3,
+                    "nodes": [
+                        {"id": n["id"], "kind": "state" if n["kind"] == "state" else "action"}
+                        for n in graph["nodes"]
+                    ],
+                }
             )
         )
         value = {
-            "version": 1,
+            "version": 2,
             "discovery": "discovery.json",
             "intent": "intent.json",
             "model": "behavior.json",
             "acceptance": "acceptance.json",
-            "capabilities": {cap["id"]: ["operation"] for cap in caps},
+            "capabilities": {cap["id"]: atomic_nodes[cap["id"] + ".backend"] for cap in caps},
             "states": {},
+            "module_graph": "backend/module-graph.json",
+            "flow_exports": "backend/flow-exports.json",
+            "flows": {
+                flow["id"]: flow["node_ids"]
+                for flow in json.loads(
+                    (package / "backend/flow-exports.json").read_text(encoding="utf-8")
+                )["flows"]
+            },
+            "nodes": {node["id"]: node["id"] for node in graph["nodes"]},
+            "atoms": atomic_nodes,
         }
         (package / "duoflow-observer.json").write_text(json.dumps(value))
         return value
@@ -114,14 +136,31 @@ class StandaloneTests(unittest.TestCase):
     def test_mapping_preserves_unverified_runtime(self):
         package = self.package()
         value = self.mapping(package)
-        self.assertEqual(
-            observer.check_mapping(package, "duoflow-observer.json"), value
-        )
+        self.assertEqual(observer.check_mapping(package, "duoflow-observer.json"), value)
         self.assertFalse((package / "sync.json").exists())
 
     def test_missing_mapping_is_rejected(self):
         package = self.package()
         with self.assertRaises(Exception):
+            observer.check_mapping(package, "duoflow-observer.json")
+
+    def test_atomic_map_must_match_public_nodes(self):
+        package = self.package()
+        value = self.mapping(package)
+        first = next(iter(value["atoms"]))
+        value["atoms"][first] = []
+        (package / "duoflow-observer.json").write_text(json.dumps(value))
+        with self.assertRaisesRegex(ValueError, "Atomic mapping"):
+            observer.check_mapping(package, "duoflow-observer.json")
+
+    def test_graph_module_cannot_claim_legacy_mapping_coverage(self):
+        package = self.package()
+        value = self.mapping(package)
+        value["version"] = 1
+        for key in ("module_graph", "flow_exports", "atoms", "nodes", "flows"):
+            value.pop(key)
+        (package / "duoflow-observer.json").write_text(json.dumps(value))
+        with self.assertRaisesRegex(ValueError, "version 2"):
             observer.check_mapping(package, "duoflow-observer.json")
 
     def test_unmapped_capability_is_rejected(self):

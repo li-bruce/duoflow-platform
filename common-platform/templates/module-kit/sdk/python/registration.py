@@ -17,11 +17,20 @@ class RegistrationError(ValueError):
 
 
 class Registration:
-    def __init__(self, manifest, document, handlers, workflow_handlers=None):
+    def __init__(
+        self,
+        manifest,
+        document,
+        handlers,
+        workflow_handlers=None,
+        *,
+        graph=None,
+        runtime_probe=None
+    ):
         """Validate startup bindings and pin complete local declarations."""
         workflow_handlers = workflow_handlers or {}
         self._need(
-            document.get("registration_version") == "1.0"
+            document.get("registration_version") in {"1.0", "1.1"}
             and manifest["protocol_version"] in ("1.0", "1.1", "1.2")
         )
         self._need(
@@ -29,6 +38,13 @@ class Registration:
             == (manifest["module"]["id"], manifest["module"]["version"])
         )
         self.ids = sorted(cap["id"] for cap in manifest["capabilities"])
+        self.modern = document["registration_version"] == "1.1"
+        self.runtime_probe = runtime_probe
+        if self.modern:
+            from .atoms import AtomBindings
+
+            self._need(graph == document["module_graph"] and callable(runtime_probe))
+            AtomBindings(graph, manifest, handlers)
         self._need(sorted(handlers) == self.ids and all(callable(fn) for fn in handlers.values()))
         self._need(
             sorted(workflow_handlers) == document["workflow_operations"]
@@ -61,16 +77,19 @@ class Registration:
         self._need(
             isinstance(offer, dict)
             and set(offer)
-            == {
-                "registration_version",
-                "nonce",
-                "contract_digest",
-                "platform_features",
-                "manifest",
-                "registration",
-            }
+            == (
+                {
+                    "registration_version",
+                    "nonce",
+                    "contract_digest",
+                    "platform_features",
+                    "manifest",
+                    "registration",
+                }
+                | ({"runtime_probe"} if self.modern else set())
+            )
         )
-        self._need(offer["registration_version"] == "1.0")
+        self._need(offer["registration_version"] == self.document["registration_version"])
         for key, length in (("nonce", 32), ("contract_digest", 64)):
             self._need(
                 isinstance(offer[key], str) and re.fullmatch("[0-9a-f]{%d}" % length, offer[key])
@@ -82,14 +101,25 @@ class Registration:
         }
         if self.document["permissions"]["mode"] == "platform_access":
             required.add("access-1.0")
+        if self.modern:
+            required.update(
+                {
+                    "registration-1.1",
+                    "module-graph-1.0",
+                    "flow-exports-1.0",
+                    "runtime-observation-1.0",
+                }
+            )
         self._need(
             isinstance(offer["platform_features"], list)
             and all(isinstance(value, str) for value in offer["platform_features"])
         )
         self._need(required.issubset(offer["platform_features"]))
         self._need(offer["manifest"] == self.manifest and offer["registration"] == self.document)
+        if self.modern:
+            self._need(self.runtime_probe(offer["runtime_probe"]) is True)
         return {
-            "registration_version": "1.0",
+            "registration_version": self.document["registration_version"],
             "nonce": offer["nonce"],
             "contract_digest": offer["contract_digest"],
             "accepted": True,
@@ -99,6 +129,7 @@ class Registration:
                 "local_registration": True,
                 "handlers": True,
                 "schemas": True,
+                **({"atomic_bindings": True, "runtime_callback": True} if self.modern else {}),
             },
             "capability_ids": self.ids,
             "workflow_operations": self.document["workflow_operations"],

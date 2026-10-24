@@ -8,8 +8,19 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
-import { createService, manifest, registration } from "../backend/server.mjs";
+import {
+  createService,
+  manifest,
+  registration,
+  moduleGraph,
+} from "../backend/server.mjs";
+import { createObservationClient } from "../sdk/node/observation.mjs";
 import { compile, createModuleServer } from "../sdk/node/runtime.mjs";
+import { createAtomBindings } from "../sdk/node/atoms.mjs";
+import {
+  assertTransition,
+  assertAtomResult,
+} from "../sdk/node/graph-testing.mjs";
 
 const M = manifest.module.id;
 const token = "synthetic-test-service-credential-32";
@@ -43,6 +54,11 @@ async function fixture(t) {
     for await (const chunk of req) body += chunk;
     const input = JSON.parse(body),
       claims = tickets.get(req.headers["x-platform-access"]);
+    if (req.url === "/api/v1/runtime-observations/probe") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ accepted: true, nonce: input.nonce }));
+      return;
+    }
     seen.push(input);
     let reason = "allowed";
     if (unavailable) {
@@ -214,6 +230,13 @@ test("registration checks both complete contracts and actual bindings without bu
       "Content-Type": "application/json",
     };
   assert.equal((await fetch(f.url + "/platform/v1/registration")).status, 401);
+  assert.equal((await fetch(f.url + "/platform/v1/module-graph")).status, 401);
+  assert.deepEqual(
+    await (
+      await fetch(f.url + "/platform/v1/module-graph", { headers })
+    ).json(),
+    moduleGraph,
+  );
   assert.deepEqual(
     await (
       await fetch(f.url + "/platform/v1/registration", { headers })
@@ -221,7 +244,7 @@ test("registration checks both complete contracts and actual bindings without bu
     registration,
   );
   const offer = {
-    registration_version: "1.0",
+    registration_version: "1.1",
     nonce: "a".repeat(32),
     contract_digest: "b".repeat(64),
     platform_features: [
@@ -229,9 +252,14 @@ test("registration checks both complete contracts and actual bindings without bu
       "access-1.0",
       "shared-hosts-1.0",
       "registration-1.0",
+      "registration-1.1",
+      "module-graph-1.0",
+      "flow-exports-1.0",
+      "runtime-observation-1.0",
     ],
     manifest,
     registration,
+    runtime_probe: { ticket: "c".repeat(64), nonce: "d".repeat(32) },
   };
   async function confirm(body) {
     return fetch(f.url + "/platform/v1/handshake", {
@@ -262,6 +290,33 @@ test("registration checks both complete contracts and actual bindings without bu
   );
   database.close();
   assert.equal(f.seen.length, 0);
+});
+test("atomic startup binding rejects missing functions and never runs business handlers", () => {
+  let calls = 0;
+  const handlers = Object.fromEntries(
+    manifest.capabilities.map((cap) => [
+      cap.id,
+      () => {
+        calls++;
+      },
+    ]),
+  );
+  const bindings = createAtomBindings({
+    graph: moduleGraph,
+    manifest,
+    handlers,
+  });
+  assert.equal(
+    bindings.forCapability(manifest.capabilities[0].id).kind,
+    "backend",
+  );
+  const copy = bindings.document;
+  copy.atoms.length = 0;
+  assert.ok(bindings.document.atoms.length > 0);
+  assert.throws(() =>
+    createAtomBindings({ graph: moduleGraph, manifest, handlers: {} }),
+  );
+  assert.equal(calls, 0);
 });
 test("strict request validation and server-owned project facts reject injected scope", async (t) => {
   const f = await fixture(t);
@@ -345,6 +400,24 @@ test("draft -> submitted -> approved requires scoped non-author reviewer; formal
     command: {},
   });
   assert.equal(submitted.body.data.projection.state, "submitted");
+  assertTransition(
+    moduleGraph,
+    `${M}.record-lifecycle`,
+    created.body.data.projection,
+    "submit",
+    submitted.body.data.projection,
+  );
+  const atom = moduleGraph.atoms.find(
+    (item) => item.capability?.id === `${M}.submit`,
+  );
+  assertAtomResult(
+    moduleGraph,
+    atom.id,
+    { object_id, expected_revision: 1, command: {} },
+    submitted.body.data,
+    (schema, value) => assert.ok(compile(schema)(value)),
+    manifest,
+  );
   assert.equal(
     (
       await f.invoke("approve", {
@@ -363,6 +436,22 @@ test("draft -> submitted -> approved requires scoped non-author reviewer; formal
   assert.equal(approved.status, 200);
   assert.equal(approved.body.data.projection.revision, 3);
   assert.equal(approved.body.data.projection.state, "approved");
+  assertTransition(
+    moduleGraph,
+    `${M}.record-lifecycle`,
+    submitted.body.data.projection,
+    "approve",
+    approved.body.data.projection,
+  );
+  assert.throws(() =>
+    assertTransition(
+      moduleGraph,
+      `${M}.record-lifecycle`,
+      created.body.data.projection,
+      "approve",
+      approved.body.data.projection,
+    ),
+  );
   assert.equal(
     (
       await f.invoke("edit", {
@@ -515,6 +604,42 @@ test("schema subset never interprets prototype names as validators or ignores ne
   assert.equal(explicit(JSON.parse('{"__proto__":"data"}')), true);
   assert.equal(explicit(JSON.parse('{"__proto__":3}')), false);
   assert.equal(Object.prototype.polluted, undefined);
+});
+
+test("observation delivery retries stable identities and isolates collector failures", async () => {
+  const batches = [];
+  const observer = createObservationClient({
+    callbackUrl: "http://127.0.0.1:9999/api/v1/runtime-observations/events",
+    graph: moduleGraph,
+    fetchImpl: async (url, options) => {
+      batches.push(JSON.parse(options.body));
+      throw new Error("offline");
+    },
+  });
+  const session = observer.session({
+    ticket: "a".repeat(64),
+    requestId: "b".repeat(32),
+    atomId: moduleGraph.atoms[0].id,
+  });
+  session.mark("started");
+  const result = { value: 7 };
+  session.mark("succeeded");
+  await observer.flush();
+  assert.deepEqual(result, { value: 7 });
+  assert.deepEqual(session.status(), { sequence: 2, dropped: 2 });
+  assert.equal(batches.length, 4);
+  assert.ok(
+    batches.every((batch) =>
+      batch.events.every((event) => !Object.hasOwn(event, "input")),
+    ),
+  );
+  const absent = observer.session({
+    requestId: "c".repeat(32),
+    atomId: moduleGraph.atoms[0].id,
+  });
+  absent.mark("started");
+  await observer.flush();
+  assert.equal(batches.length, 4);
 });
 
 test("stateless role-based tools execute without central tickets and still reject unauthorized actors", async (t) => {

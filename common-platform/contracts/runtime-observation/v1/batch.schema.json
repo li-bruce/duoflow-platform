@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "runtime_version": {
+      "const": "1.0"
+    },
+    "request_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "graph_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40
+    },
+    "dropped": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 256
+    },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 256
+          },
+          "atom_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]{2,120}$"
+          },
+          "call_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "parent_call_id": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{32}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "phase": {
+            "enum": [
+              "started",
+              "succeeded",
+              "failed",
+              "state"
+            ]
+          },
+          "state": {
+            "type": "object",
+            "properties": {
+              "machine_id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_.-]{2,120}$"
+              },
+              "value": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "object_ref": {
+                "type": "object",
+                "properties": {
+                  "object_type": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_.-]{2,120}$"
+                  },
+                  "object_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  }
+                },
+                "required": [
+                  "object_type",
+                  "object_id"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "machine_id",
+              "value",
+              "revision",
+              "object_ref"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "sequence",
+          "atom_id",
+          "call_id",
+          "parent_call_id",
+          "phase"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "runtime_version",
+    "request_id",
+    "graph_version",
+    "dropped",
+    "events"
+  ],
+  "additionalProperties": false
+}

@@ -42,6 +42,8 @@ SOURCE_FILES = (
     "scripts/build_module_developer_prompt.py", "scripts/module_kit.py", "scripts/build_handbooks.py", "scripts/export_framework.py", "config/identity-demo.json", "config/project-public-documents.json", "docs/handbooks.json",
     "scripts/module_kit_integration.py", "scripts/module_kit_services.py",
     "scripts/build_duoflow_repositories.py",
+    "scripts/module_graph_template.py",
+    "scripts/flow_exports_template.py",
 )
 EXCLUDED_PARTS = {"data", "logs", "node_modules", "__pycache__", ".venv", ".git", "dist"}
 

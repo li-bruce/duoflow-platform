@@ -70,9 +70,7 @@ def init(module, source):
         "--viewer",
         "static/graph",
     ]
-    subprocess.run(
-        command, check=True, capture_output=True, text=True, encoding="utf-8"
-    )
+    subprocess.run(command, check=True, capture_output=True, text=True, encoding="utf-8")
     return {
         "status": "initialized",
         "business_model": "required",
@@ -92,10 +90,12 @@ def check_mapping(module, mapping):
         "capabilities",
         "states",
     }
+    if definition.get("version") == 2:
+        required |= {"module_graph", "flow_exports", "atoms", "nodes", "flows"}
     if (
         not required <= set(definition)
         or set(definition) - required - {"project"}
-        or definition["version"] != 1
+        or definition["version"] not in (1, 2)
     ):
         raise ValueError("Unsupported Observer mapping contract")
     for key in ("discovery", "intent", "model", "acceptance"):
@@ -104,18 +104,17 @@ def check_mapping(module, mapping):
     if definition.get("project"):
         project = read(inside(module, definition["project"]))
         if project.get("protocol") != "bo-project/v1" or project.get("model") != model:
-            raise ValueError(
-                "The generated model differs from its canonical Observer project"
-            )
+            raise ValueError("The generated model differs from its canonical Observer project")
     if model.get("schema_version") != 3:
         raise ValueError("The active business model must use Observer model v3")
     nodes = {node["id"]: node for node in model["nodes"]}
+    metadata = read(module / "module-kit.json")
+    if metadata.get("contracts", {}).get("module_graph") and definition["version"] != 2:
+        raise ValueError("Graph-aware modules require Observer mapping version 2")
     manifest = read(module / "backend/manifest.json")
     capabilities = {cap["id"] for cap in manifest["capabilities"]}
     if set(definition["capabilities"]) != capabilities:
-        raise ValueError(
-            "Every public capability needs an explicit business-model mapping"
-        )
+        raise ValueError("Every public capability needs an explicit business-model mapping")
     for references in definition["capabilities"].values():
         if (
             not references
@@ -133,14 +132,52 @@ def check_mapping(module, mapping):
     for flow in flows:
         machine = flow.get("state_machine")
         if not machine:
-            raise ValueError(
-                "A newly modeled workflow must declare its business states"
-            )
+            raise ValueError("A newly modeled workflow must declare its business states")
         states = definition["states"][flow["id"]]
         if set(states) != {state["id"] for state in machine["states"]}:
             raise ValueError("State mapping must cover every public business state")
         if any(nodes.get(node, {}).get("kind") != "state" for node in states.values()):
             raise ValueError("State mappings must reference actual state nodes")
+    if definition["version"] == 2:
+        graph = read(inside(module, definition["module_graph"]))
+        graph_nodes = {node["id"]: node for node in graph["nodes"]}
+        atoms = {atom["id"]: atom for atom in graph["atoms"]}
+        if set(definition["nodes"]) != set(graph_nodes) or set(definition["atoms"]) != set(atoms):
+            raise ValueError("Every public node and atom needs an Observer mapping")
+        for public_id, model_id in definition["nodes"].items():
+            if model_id not in nodes or (
+                graph_nodes[public_id]["kind"] == "state" and nodes[model_id]["kind"] != "state"
+            ):
+                raise ValueError(
+                    "Public node mapping references a missing or incompatible model node"
+                )
+        for atom_id, references in definition["atoms"].items():
+            expected = {
+                definition["nodes"][entry["node_id"]]
+                for entry in graph["mappings"]
+                if entry["atom_id"] == atom_id
+            }
+            if (
+                not references
+                or len(set(references)) != len(references)
+                or set(references) != expected
+            ):
+                raise ValueError("Atomic mapping differs from the public graph mappings")
+            atom = atoms[atom_id]
+            if (
+                atom["kind"] == "backend"
+                and set(definition["capabilities"][atom["capability"]["id"]]) != expected
+            ):
+                raise ValueError("Capability and backend atom map to different business nodes")
+        exports = read(inside(module, definition["flow_exports"]))
+        if set(definition["flows"]) != {flow["id"] for flow in exports["flows"]}:
+            raise ValueError("Every public business flow needs an Observer mapping")
+        for flow in exports["flows"]:
+            references = definition["flows"][flow["id"]]
+            if len(references) != len(set(references)) or set(references) != {
+                definition["nodes"][node] for node in flow["node_ids"]
+            }:
+                raise ValueError("Public flow mapping differs from its declared business boundary")
     return definition
 
 
@@ -172,9 +209,7 @@ def check_sync_inputs(module, definition):
     if isinstance(sync_model, dict) and sync_model.get("protocol") == "bo-project/v1":
         sync_model = sync_model.get("model")
     if not isinstance(sync_model, dict) or sync_model != read(model_path):
-        raise ValueError(
-            "Observer synchronization model differs from the public mapping"
-        )
+        raise ValueError("Observer synchronization model differs from the public mapping")
 
     actual_inputs = {
         "intent": sync_model.get("intent"),
@@ -183,8 +218,17 @@ def check_sync_inputs(module, definition):
     }
     for key, relative in actual_inputs.items():
         if referenced_file(relative) != referenced_file(definition[key]):
+            raise ValueError("Observer synchronization uses a different " + key + " file")
+    if definition.get("version") == 2:
+        graph_paths = {referenced_file(definition[key]) for key in ("module_graph", "flow_exports")}
+        tracked = [
+            *config.get("code_files", []),
+            *config.get("watch_files", []),
+            *sync_model.get("source_files", []),
+        ]
+        if not graph_paths <= {referenced_file(path) for path in tracked}:
             raise ValueError(
-                "Observer synchronization uses a different " + key + " file"
+                "The atomic graph and public flows must be tracked by Observer synchronization"
             )
 
 

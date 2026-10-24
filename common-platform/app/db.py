@@ -111,6 +111,7 @@ class Invocation(Base):
     input_hash: Mapped[str] = mapped_column(String(64))
     input: Mapped[dict] = mapped_column(JSON)
     principal_snapshot: Mapped[dict] = mapped_column(JSON, default=dict)
+    composition_guard: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     origin: Mapped[str] = mapped_column(String(30))
     conversation_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
     status: Mapped[str] = mapped_column(String(30))
@@ -287,6 +288,9 @@ class Audit(Base):
 
 
 def create_database(data_dir: Path, database_url: str | None = None):
+    # Register additive composition tables before creating a new or existing DB.
+    from . import composition_models  # noqa: F401
+
     data_dir.mkdir(parents=True, exist_ok=True)
     url = (
         database_url
@@ -312,6 +316,18 @@ def create_database(data_dir: Path, database_url: str | None = None):
     # Existing installations predate these optional conversation fields. New
     # identity tables are additive; preserve all existing rows and passwords.
     with engine.begin() as connection:
+        if "shared" not in {
+            c["name"] for c in inspect(connection).get_columns("composition_definitions")
+        }:
+            connection.execute(
+                text(
+                    "ALTER TABLE composition_definitions ADD COLUMN shared BOOLEAN NOT NULL DEFAULT 0"
+                )
+            )
+        if "composition_guard" not in {
+            c["name"] for c in inspect(connection).get_columns("invocations")
+        }:
+            connection.execute(text("ALTER TABLE invocations ADD COLUMN composition_guard JSON"))
         for table in ("messages", "interaction_instances", "resources"):
             if "access_stamp" not in {c["name"] for c in inspect(connection).get_columns(table)}:
                 connection.execute(text(f"ALTER TABLE {table} ADD COLUMN access_stamp VARCHAR(64)"))

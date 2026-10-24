@@ -153,6 +153,19 @@ class Runtime:
         from .access_bridge import AccessBridge
 
         self.access_bridge = AccessBridge(self)
+        from .runtime_observation import RuntimeObservations
+
+        self.observations = RuntimeObservations(self)
+        if self.remote_services:
+            self.remote_services.admission_probe = self.observations
+        from .module_catalog import ModuleCatalog
+        from .atomic_instances import AtomicInstances
+
+        self.module_catalog = ModuleCatalog(self)
+        self.atomic_instances = AtomicInstances(self)
+        from .compositions import Compositions
+
+        self.compositions = Compositions(self)
         # Host packages/policy can change while this process is stopped. A saved
         # receipt cannot substitute for checking the currently installed pieces.
         if self.remote_services:
@@ -473,6 +486,31 @@ class Runtime:
                     "共享呈现绑定的能力或版本与模块声明不一致。",
                     409,
                 )
+        if document["registration_version"] == "1.1":
+            from .module_graph import validate_graph_hosts
+            from .flow_exports import validate_flow_exports
+
+            flows = [
+                self.workflows.definitions[ref["id"]]
+                for ref in document["host_requirements"]["workflows"]
+            ]
+            interactions = [
+                self.interactions.definitions[ref["id"]]
+                for ref in document["host_requirements"]["interactions"]
+            ]
+            validate_graph_hosts(
+                document["module_graph"],
+                binding["manifest"],
+                workflows=flows,
+                interactions=interactions,
+            )
+            validate_flow_exports(
+                document["flow_exports"],
+                binding["manifest"],
+                document,
+                document["module_graph"],
+                workflows=flows,
+            )
         # Detect collisions against both installed local modules and published
         # remote modules before a report can claim successful host integration.
         bindings = [
@@ -645,6 +683,22 @@ class Runtime:
                 "input": payload,
                 "context": {"workspace_id": ctx.workspace_id, "actor": remote_actor},
             }
+            observation_options = {}
+            try:
+                graph = self.remote_services.observation_graph(
+                    binding["service_id"], binding["revision"]
+                )
+                if graph:
+                    observation_options["observation_ticket"] = self.observations.issue(
+                        ctx.actor,
+                        self.registry.get(spec["id"], ctx.actor),
+                        ctx.invocation_id,
+                        graph,
+                    )
+            except Exception:
+                # Observation storage is an auxiliary path. Authentication and
+                # business authorization below remain mandatory and independent.
+                pass
             try:
                 if self.access.module_registered(binding["manifest"]["module"]["id"]):
                     ticket = self.access_bridge.issue(
@@ -654,11 +708,15 @@ class Runtime:
                         "invoke",
                     )
                     response = await self.remote_services.invoke(
-                        binding["service_id"], binding["revision"], request, access_ticket=ticket
+                        binding["service_id"],
+                        binding["revision"],
+                        request,
+                        access_ticket=ticket,
+                        **observation_options,
                     )
                 else:
                     response = await self.remote_services.invoke(
-                        binding["service_id"], binding["revision"], request
+                        binding["service_id"], binding["revision"], request, **observation_options
                     )
             except RemoteServiceError as exc:
                 raise PlatformError(exc.code, exc.message, 502) from None
@@ -1272,6 +1330,11 @@ class Runtime:
 
     async def execute(self, db, actor, capability_id, payload, run_id=None, invocation_id=None):
         """选择本地处理器或远程接口，并按当前能力声明验证结果。"""
+        invocation = db.get(Invocation, invocation_id) if invocation_id else None
+        if invocation and invocation.composition_guard:
+            await self.compositions.check_dispatch(
+                actor, capability_id, payload, invocation.composition_guard
+            )
         spec = self.registry.get(capability_id, actor)
         self.check_available(spec)
         self.registry.validate(spec["input_schema"], payload)
@@ -1359,6 +1422,7 @@ class Runtime:
         *,
         interaction_guard=None,
         workflow_guard=None,
+        composition_guard=None,
     ):
         """统一调用入口：重新授权、核对幂等请求，在事务内保存效果与回执。"""
         spec = self.registry.get(capability_id, actor)
@@ -1396,6 +1460,7 @@ class Runtime:
                 "conversation": conversation_id,
                 **({"interaction": interaction_guard} if interaction_guard else {}),
                 **({"workflow": workflow_guard} if workflow_guard else {}),
+                **({"composition": composition_guard} if composition_guard else {}),
             }
         )
         async with self.lock:
@@ -1442,6 +1507,7 @@ class Runtime:
                     conversation_id=conversation_id,
                     status="accepted",
                     principal_snapshot=self.access_snapshot(actor, spec),
+                    composition_guard=composition_guard,
                 )
                 db.add(invocation)
                 db.flush()
@@ -1607,12 +1673,12 @@ class Runtime:
     async def start(self):
         with self.sessions.begin() as db:
             # Remote model response might have been generated before a crash. Do
-            # not silently replay a paid call; offer explicit retry instead.
+            # not silently replay a paid call or imply that remote effects rolled back.
             for run in db.query(Run).filter_by(status="running"):
                 run.status, run.updated_at = "failed", now()
                 run.error = {
                     "code": "interrupted",
-                    "message": "上次运行被中断，结果尚未提交。可手动重试。",
+                    "message": "上次运行被中断，平台未确认最终结果。重试前请先核对模块中的处理结果。",
                 }
                 audit(db, run.actor_id, "run.interrupted", run.id)
         self.worker_task = asyncio.create_task(self.worker())

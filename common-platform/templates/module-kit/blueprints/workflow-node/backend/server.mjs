@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createModuleServer, requireThat } from "../sdk/node/runtime.mjs";
 import { createAccessClient } from "../sdk/node/access-client.mjs";
+import { createObservationClient } from "../sdk/node/observation.mjs";
 import { createBusiness } from "./business.mjs";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -12,12 +13,16 @@ export const manifest = JSON.parse(
 export const registration = JSON.parse(
   readFileSync(path.join(root, "registration.json"), "utf8"),
 );
+export const moduleGraph = JSON.parse(
+  readFileSync(path.join(root, "module-graph.json"), "utf8"),
+);
 export function createService({
   token,
   callbackUrl,
   filename,
   projects,
   fetchImpl,
+  observationUrl,
 }) {
   const business = createBusiness({
     filename,
@@ -25,12 +30,37 @@ export function createService({
     decide: createAccessClient({ callbackUrl, fetchImpl }),
   });
   try {
+    const observer = createObservationClient({
+      callbackUrl:
+        observationUrl ||
+        new URL("/api/v1/runtime-observations/events", callbackUrl).href,
+      graph: moduleGraph,
+      fetchImpl,
+    });
+    // Observe only the projection returned after the business transaction. The
+    // module names its own formal machine; the transport does not infer one.
+    const handlers = Object.fromEntries(
+      Object.entries(business.handlers).map(([id, handler]) => [
+        id,
+        async (context) => {
+          const result = await handler(context);
+          if (result.data.projection)
+            context.observe?.state(
+              "__MODULE_ID__.record-lifecycle",
+              result.data.projection,
+            );
+          return result;
+        },
+      ]),
+    );
     const server = createModuleServer({
       manifest,
       registration,
       token,
-      handlers: business.handlers,
+      handlers,
       workflowHandlers: business.workflowHandlers,
+      graph: moduleGraph,
+      observationClient: observer,
     });
     return {
       server,
@@ -38,6 +68,7 @@ export function createService({
         if (server.listening)
           await new Promise((resolve) => server.close(resolve));
         await business.close();
+        await observer?.flush();
       },
     };
   } catch (error) {
@@ -63,6 +94,7 @@ if (
   const service = createService({
     token: process.env.PLATFORM_SERVICE_TOKEN,
     callbackUrl: process.env.PLATFORM_ACCESS_DECISION_URL,
+    observationUrl: process.env.PLATFORM_OBSERVATION_URL,
     filename: path.join(directory, "records.sqlite"),
     projects,
   });

@@ -20,7 +20,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 KIT = ROOT / "templates" / "module-kit"
-KIT_VERSION = "1.0.0"
+KIT_VERSION = "1.1.0"
 TEMPLATES = {"tool-python": ("tool", "python"), "workflow-node": ("workflow", "node")}
 ADAPTATIONS = {"workflow-python-remote": ("workflow", "python-remote")}
 TOKENS = ("__MODULE_ID__", "__TITLE__", "__PACK_NAME__")
@@ -30,8 +30,17 @@ CONTRACTS = {
     "workflow": "1.0",
     "remote_manifest": "1.2",
     "remote_invoke": "1.1",
-    "registration": "1.0",
+    "registration": "1.1",
+    "module_graph": "1.0",
+    "flow_exports": "1.0",
+    "runtime_observation": "1.0",
 }
+LEGACY_CONTRACTS = {
+    key: value
+    for key, value in CONTRACTS.items()
+    if key not in {"module_graph", "flow_exports", "runtime_observation"}
+}
+LEGACY_CONTRACTS["registration"] = "1.0"
 RESERVED = {
     "con",
     "prn",
@@ -132,6 +141,7 @@ def scaffold(template, module_id, title, output, pack_name=None):
         for base, prefix in (
             (source, Path(".")),
             (KIT / "sdk" / TEMPLATES[template][1], Path("sdk") / TEMPLATES[template][1]),
+            (KIT / "sdk/frontend", Path("sdk/frontend")),
         ):
             need(base.is_dir(), "模板 SDK 缺失。")
             for path in sorted(base.rglob("*")):
@@ -316,12 +326,13 @@ def check(package):
     )
     supported = {**TEMPLATES, **ADAPTATIONS}
     need(
-        meta["kit_version"] == KIT_VERSION and meta["template"] in supported,
+        meta["kit_version"] in {KIT_VERSION, "1.0.0"} and meta["template"] in supported,
         "模板版本或类型不受支持。",
     )
     need(
         (meta["kind"], meta["runtime"]) == supported[meta["template"]]
-        and meta["contracts"] == CONTRACTS,
+        and meta["contracts"]
+        == (CONTRACTS if meta["kit_version"] == KIT_VERSION else LEGACY_CONTRACTS),
         "模板运行方式或协议版本不匹配。",
     )
     validate_names(meta["module_id"], meta["title"], meta["pack_name"])
@@ -594,6 +605,85 @@ def check(package):
             root / "frontend/Component.tsx"
         ).exists():
             frontend_ids.extend(check_interaction())
+    # Graph-aware packages must cover every actual host, including attachments.
+    # Older packages retain their original contract and cannot claim this check.
+    graph_checked = False
+    if meta["kit_version"] == KIT_VERSION or (root / "backend/module-graph.json").exists():
+        from app.module_graph import validate_graph_hosts
+
+        graph = read_json(root, "backend/module-graph.json")
+        if meta["kind"] == "workflow":
+            need(
+                registration["registration_version"] == "1.1",
+                "新模块须确认原子、公开业务流与运行同步协议。",
+            )
+            need(
+                registration["module_graph"] == graph
+                and registration["flow_exports"] == read_json(root, "backend/flow-exports.json"),
+                "注册附件与实际原子和业务流文件不一致。",
+            )
+        interaction_definitions = (
+            [read_json(root, "frontend/interaction.json")]
+            if (root / "frontend/interaction.json").exists()
+            else []
+        )
+        workflow_definitions = (
+            read_json(root, "frontend/flow.json")["flows"]
+            if (root / "frontend/flow.json").exists()
+            else []
+        )
+        if meta["kind"] == "workflow":
+            expected_hosts = {
+                "workflows": sorted(
+                    (value["id"], value["version"]) for value in workflow_definitions
+                ),
+                "interactions": sorted(
+                    (value["id"], value["version"]) for value in interaction_definitions
+                ),
+            }
+            need(
+                all(
+                    sorted(
+                        (value["id"], value["version"])
+                        for value in registration["host_requirements"][kind]
+                    )
+                    == expected
+                    for kind, expected in expected_hosts.items()
+                ),
+                "注册附件必须完整声明实际共享组件和流程。",
+            )
+        try:
+            validate_graph_hosts(
+                graph,
+                manifest,
+                interactions=interaction_definitions,
+                workflows=workflow_definitions,
+            )
+        except Exception as exc:
+            raise KitError("原子登记、业务节点或实际宿主映射不一致。") from exc
+        for atom in graph["atoms"]:
+            file_in(root, atom["source"]["path"])
+        from app.flow_exports import validate_flow_exports
+
+        flow_registration = (
+            registration
+            if meta["kind"] == "workflow"
+            else {
+                "permissions": {"mode": "platform_access", "definition": access},
+                "data_objects": [],
+            }
+        )
+        try:
+            validate_flow_exports(
+                read_json(root, "backend/flow-exports.json"),
+                manifest,
+                flow_registration,
+                graph,
+                workflows=workflow_definitions,
+            )
+        except Exception as exc:
+            raise KitError("公开业务流的入口、数据或权限声明不一致。") from exc
+        graph_checked = True
     for path in ("README.md",):
         file_in(root, path)
     for directory in ("backend", "frontend", "sdk"):
@@ -612,6 +702,7 @@ def check(package):
         "capabilities": len(caps),
         "permissions": len(permissions),
         "frontend_ids": frontend_ids,
+        "module_graph_checked": graph_checked,
         "checks": [
             "manifest",
             "access",
@@ -620,6 +711,7 @@ def check(package):
             "references",
             "install_files",
             "registration",
+            *(["module_graph", "atomic_hosts", "flow_exports"] if graph_checked else []),
         ],
         "executed_supplier_code": False,
         "installed": False,

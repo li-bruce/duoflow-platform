@@ -399,6 +399,7 @@ class AccessControl:
         actor_id,
         expires_at=None,
         expected_policy_revision=None,
+        _transaction=None,
     ):
         self._write_allowed()
         _validate(
@@ -419,7 +420,7 @@ class AccessControl:
             "授权有效期必须在未来",
             422,
         )
-        with self.sessions() as db:
+        with nullcontext(_transaction) if _transaction is not None else self.sessions() as db:
             definition = db.get(AccessDefinition, module_id)
             require(
                 definition is not None and definition.enabled,
@@ -464,8 +465,82 @@ class AccessControl:
             self._audit(
                 db, actor_id, "grant.create", module_id, grant.id, definition.policy_revision
             )
-            db.commit()
+            if _transaction is None:
+                db.commit()
             return self._grant(grant)
+
+    def grant_many(self, subject_id, bindings, *, actor_id, expires_at=None):
+        """Apply an explicit role group atomically, preserving each module's scope.
+
+        A retry reuses an identical active grant; similarly named roles from
+        different modules are always separate bindings. One invalid binding
+        rolls back the entire group, including policy revisions and audit rows.
+        """
+        from .db import User
+        from .identity import has_permission, load_actor
+
+        self._write_allowed()
+        require(
+            0 < len(bindings) <= 20,
+            "access_group_size",
+            "一组角色需要包含 1 至 20 项明确授权。",
+            422,
+        )
+        with self.sessions.begin() as db:
+            actor = load_actor(db, actor_id)
+            require(
+                has_permission(actor, "identity.manage"),
+                "forbidden",
+                "组合授权需要身份管理权限。",
+                403,
+            )
+            subject = db.get(User, subject_id)
+            require(
+                subject is not None and subject.enabled,
+                "access_subject",
+                "授权用户不存在或已停用。",
+                422,
+            )
+            result = []
+            for binding in bindings:
+                definition = db.get(AccessDefinition, binding["module_id"])
+                require(
+                    definition is not None and definition.enabled,
+                    "access_definition_missing",
+                    "模块权限定义不可用。",
+                    404,
+                )
+                # Exact scope equality preserves OR-of-AND semantics. Never union
+                # separate organization/project scopes into a broader grant.
+                existing = next(
+                    (
+                        g
+                        for g in db.query(AccessGrant).filter_by(
+                            subject_id=subject_id,
+                            module_id=binding["module_id"],
+                            role_id=binding["role_id"],
+                            revoked=False,
+                            definition_revision=definition.definition_revision,
+                        )
+                        if g.scope == binding["scope"]
+                        and g.expires_at == expires_at
+                        and (g.expires_at is None or g.expires_at > self.clock())
+                    ),
+                    None,
+                )
+                if existing:
+                    result.append(self._grant(existing))
+                else:
+                    result.append(
+                        self.grant(
+                            subject_id,
+                            **binding,
+                            actor_id=actor_id,
+                            expires_at=expires_at,
+                            _transaction=db,
+                        )
+                    )
+            return {"items": result}
 
     def revoke(self, grant_id, *, actor_id):
         self._write_allowed()

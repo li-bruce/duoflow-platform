@@ -42,8 +42,8 @@ assert not {'app','sqlalchemy','fastapi','uvicorn'} & set(sys.modules)
 def test_release_does_not_overwrite_and_records_sources(tmp_path):
     target = tmp_path / "kit"
     result = release.build("module-kit", target)
-    assert result["release"] == "v0.01"
-    assert (target / "VERSION").read_text().strip() == "v0.01"
+    assert result["release"] == "v0.02"
+    assert (target / "VERSION").read_text().strip() == "v0.02"
     assert (target / "skills/duoflow-module/SKILL.md").is_file()
     assert 'data-product="kit"' in (target / "docs/demo.html").read_text(encoding="utf-8")
     assert not (target / "app").exists()

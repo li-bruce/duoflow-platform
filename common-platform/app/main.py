@@ -115,6 +115,7 @@ def create_app(data_dir: Path | None = None, start_worker=True, gateway=None, re
         monitor_task = None
         if start_worker:
             await runtime.start()
+            await runtime.compositions.start()
             monitor_task = asyncio.create_task(remote_services.monitor_loop(monitor_stop))
         try:
             yield
@@ -123,6 +124,7 @@ def create_app(data_dir: Path | None = None, start_worker=True, gateway=None, re
             if monitor_task:
                 await monitor_task
             if start_worker:
+                await runtime.compositions.stop()
                 await runtime.stop()
             agent_engine.close()
             engine.dispose()
@@ -471,6 +473,20 @@ def create_app(data_dir: Path | None = None, start_worker=True, gateway=None, re
     from .access_bridge import create_access_bridge_router
 
     app.include_router(create_access_bridge_router(runtime.access_bridge))
+    from .runtime_observation import create_observation_router
+
+    app.include_router(create_observation_router(runtime.observations, require_user))
+    from .atomic_instances import create_atomic_router
+
+    app.include_router(create_atomic_router(runtime.atomic_instances, require_user, check_csrf))
+    from .module_catalog import create_module_catalog_router
+
+    app.include_router(
+        create_module_catalog_router(runtime.module_catalog, require_user, check_csrf)
+    )
+    from .composition_routes import create_composition_router
+
+    app.include_router(create_composition_router(runtime.compositions, require_user, check_csrf))
     app.include_router(
         create_file_router(
             runtime.workflows.transport,

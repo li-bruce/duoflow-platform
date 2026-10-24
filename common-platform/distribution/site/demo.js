@@ -15,13 +15,15 @@ const steps = isKit
       ["提交办理", "提交后，事项进入下一办理阶段。"],
       ["处理反馈", "收到反馈后修改内容，再次提交。"],
       ["完成与恢复", "查看完成状态和保留下来的办理记录。"],
+      ["连接另一个模块", "选择下一项业务，将已有结果交给它继续处理。"],
+      ["查看整体业务图", "沿着同一张图，查看每一步与数据去向。"],
     ];
 let index = 0;
 let mode = "page";
 let name = isKit ? "文字整理" : "我的第一项工作";
 let text = "把一段文字整理为清楚的结果。";
 const byId = (id) => document.getElementById(id);
-const storageKey = `duoflow-intro-demo-v0.01-${product}`;
+const storageKey = `duoflow-intro-demo-v0.02-${product}`;
 
 // Retain teaching data under a separate key for each product.
 function saveState() {
@@ -69,7 +71,15 @@ function record(stage) {
   card.append(element("p", text));
   const status = isKit
     ? "共用内容 · 共用结果"
-    : ["草稿已保存", "草稿已保存", "已提交", "修改后已提交", "已完成"][index];
+    : [
+        "草稿已保存",
+        "草稿已保存",
+        "已提交",
+        "修改后已提交",
+        "已完成",
+        "结果已传递",
+        "组合已完成",
+      ][index];
   card.append(element("span", status, "demo-status"));
   stage.append(card);
 }
@@ -157,7 +167,13 @@ function render() {
     );
   } else if (isKit && index === 2) {
     const list = element("ul", undefined, "check-list");
-    for (const label of ["业务动作", "输入与结果", "页面入口", "对话入口"])
+    for (const label of [
+      "组件编号与业务位置",
+      "输入、结果与事件",
+      "局部状态与正式状态",
+      "页面与对话入口",
+      "完整流程与部分功能",
+    ])
       list.append(element("li", "✓ " + label));
     stage.append(
       list,
@@ -177,6 +193,7 @@ function render() {
       "调用接口",
       "模块确认",
       "办理入口",
+      "运行状态回传",
     ])
       list.append(element("li", "✓ " + label));
     stage.append(
@@ -187,6 +204,40 @@ function render() {
         "demo-summary",
       ),
     );
+  } else if (!isKit && index >= 5) {
+    const graph = element("div", undefined, "demo-flow");
+    for (const label of [
+      "记录模块 · 已完成",
+      "→",
+      "记录编号",
+      "→",
+      "接收模块 · 已完成",
+    ])
+      graph.append(element(label === "→" ? "b" : "span", label));
+    stage.append(graph);
+    stage.append(
+      element(
+        "p",
+        index === 5
+          ? "选择“接收记录”作为下一步，连接记录模块给出的编号。每一步都核对当前办理人的权限。"
+          : "图中保留两个模块的关系。点击下面的节点，查看它接收什么、完成了什么。",
+        "demo-summary",
+      ),
+    );
+    const detail = element("p", "请选择一个节点。", "demo-summary");
+    const nodes = element("div", undefined, "mode-toggle");
+    for (const [title, description] of [
+      ["记录模块", `已完成「${name}」，提供记录编号。`],
+      ["数据连接", "把记录编号传给接收模块，来源和目标分别核对权限。"],
+      ["接收模块", "读取指定记录，保存本步结果，组合完成。"],
+    ]) {
+      const button = element("button", title, "small-button");
+      button.addEventListener("click", () => {
+        detail.textContent = description;
+      });
+      nodes.append(button);
+    }
+    stage.append(nodes, detail);
   } else {
     modeControls(stage);
     if (!isKit && index === 3)

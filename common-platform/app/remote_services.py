@@ -132,6 +132,7 @@ class RemoteServiceManager:
         self._read_state = None
         self._validated_manifests = set()
         self._admitting = set()
+        self.admission_probe = None
 
     @staticmethod
     def _invalid():
@@ -657,11 +658,22 @@ class RemoteServiceManager:
             )
 
     async def _request(
-        self, item, token, method, endpoint, *, body=None, limit=None, access_ticket=None
+        self,
+        item,
+        token,
+        method,
+        endpoint,
+        *,
+        body=None,
+        limit=None,
+        access_ticket=None,
+        observation_ticket=None,
     ):
         headers = {"Accept": "application/json"}
         if access_ticket:
             headers["X-Platform-Access"] = access_ticket
+        if observation_ticket:
+            headers["X-DuoFlow-Observation"] = observation_ticket
         if token:
             headers["Authorization"] = "Bearer " + token
         content = None
@@ -948,6 +960,15 @@ class RemoteServiceManager:
             checks[stage].update(passed=True, code="ok")
             stage += 1
             endpoints = [("GET", name) for name in ("manifest", "health", "registration")]
+            if registration["registration_version"] == "1.1":
+                endpoints += [("GET", "module-graph"), ("GET", "flow-exports")]
+                for name, field in (
+                    ("module-graph", "module_graph"),
+                    ("flow-exports", "flow_exports"),
+                ):
+                    actual = await self._request(item, token, "GET", name, limit=self._MAX_MANIFEST)
+                    if actual != registration[field]:
+                        raise ValueError("registration_document_changed")
             endpoints += [("POST", name) for name in ("invoke", "handshake")]
             endpoints += [
                 ("POST", "workflow/" + name) for name in registration["workflow_operations"]
@@ -973,8 +994,16 @@ class RemoteServiceManager:
             checks[stage].update(passed=True, code="ok")
             stage += 1
             offer = make_offer(fresh, registration, uuid.uuid4().hex)
+            if registration["registration_version"] == "1.1":
+                if self.admission_probe is None:
+                    raise ValueError("registration_runtime_unavailable")
+                offer["runtime_probe"] = self.admission_probe.begin_probe(
+                    service_id, expected_revision
+                )
             answer = await self._request(item, token, "POST", "handshake", body=offer, limit=32768)
             validate_confirmation(answer, offer)
+            if registration["registration_version"] == "1.1":
+                self.admission_probe.require_probe(offer["runtime_probe"])
             checks[stage].update(passed=True, code="ok")
             stage += 1
             if host_check is not None:
@@ -1182,10 +1211,25 @@ class RemoteServiceManager:
         with self._lock:
             return self._binding(self._find(self._read(), service_id))
 
-    async def invoke(self, service_id, revision, request, *, access_ticket=None):
+    def observation_graph(self, service_id, revision):
+        """Return only the admitted graph attached to this exact service revision."""
+        with self._lock:
+            item = self._find(self._read(), service_id)
+            self._same_revision(item, revision)
+            document = item.get("registration") or {}
+            if document.get("registration_version") != "1.1":
+                return None
+            self.require_admitted(item)
+            return copy.deepcopy(document["module_graph"])
+
+    async def invoke(
+        self, service_id, revision, request, *, access_ticket=None, observation_ticket=None
+    ):
         item, token, tokens = self._snapshot(service_id)
         if access_ticket:
             tokens = [*tokens, access_ticket]
+        if observation_ticket:
+            tokens = [*tokens, observation_ticket]
         self._same_revision(item, revision)
         if not item["enabled"]:
             raise RemoteServiceError("remote_disabled", "远程服务已停用，本次未发送请求。")
@@ -1259,6 +1303,7 @@ class RemoteServiceManager:
             body=request,
             limit=MAX_WORKSPACE_RESPONSE_BYTES if modern else self._MAX_RESPONSE,
             **({"access_ticket": access_ticket} if access_ticket else {}),
+            **({"observation_ticket": observation_ticket} if observation_ticket else {}),
         )
         if (
             not isinstance(response, dict)

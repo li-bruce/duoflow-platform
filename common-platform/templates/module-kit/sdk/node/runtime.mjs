@@ -2,6 +2,7 @@
 import http from "node:http";
 import { timingSafeEqual } from "node:crypto";
 import { createRegistration } from "./registration.mjs";
+import { createAtomBindings } from "./atoms.mjs";
 
 export function fail(code, message, status = 422) {
   return Object.assign(new Error(message), { code, status });
@@ -264,6 +265,8 @@ export function createModuleServer({
   token,
   handlers,
   workflowHandlers = {},
+  graph = null,
+  observationClient = null,
 }) {
   // Snapshot the same dispatch tables that acceptance checks. Caller mutation
   // after startup must not silently remove a previously confirmed interface.
@@ -271,6 +274,9 @@ export function createModuleServer({
   registration = structuredClone(registration);
   handlers = Object.freeze({ ...handlers });
   workflowHandlers = Object.freeze({ ...workflowHandlers });
+  const atoms = graph
+    ? createAtomBindings({ graph, manifest, handlers })
+    : null;
   requireThat(
     typeof token === "string" && token.length >= 24,
     "service_config",
@@ -294,8 +300,11 @@ export function createModuleServer({
     handlers,
     workflowHandlers,
     compile,
+    graph: atoms?.document,
+    runtimeProbe: observationClient?.probe,
   });
   return http.createServer(async (request, response) => {
+    let observation;
     try {
       const received = Buffer.from(request.headers.authorization || "");
       requireThat(
@@ -310,6 +319,18 @@ export function createModuleServer({
       if (request.method === "GET" && request.url === "/platform/v1/manifest")
         return send(response, 200, manifest);
       if (
+        atoms &&
+        request.method === "GET" &&
+        request.url === "/platform/v1/module-graph"
+      )
+        return send(response, 200, atoms.document);
+      if (
+        registration.flow_exports &&
+        request.method === "GET" &&
+        request.url === "/platform/v1/flow-exports"
+      )
+        return send(response, 200, registrar.document.flow_exports);
+      if (
         request.method === "GET" &&
         request.url === "/platform/v1/registration"
       )
@@ -318,7 +339,7 @@ export function createModuleServer({
         return send(
           response,
           200,
-          registrar.confirm(await bodyOf(request, 1048576)),
+          await registrar.confirm(await bodyOf(request, 1048576)),
         );
       const operation = request.url?.startsWith("/platform/v1/workflow/")
         ? request.url.slice("/platform/v1/workflow/".length)
@@ -392,7 +413,19 @@ export function createModuleServer({
           403,
         );
       }
-      const output = await handlers[body.capability_id]({ body, ticket });
+      if (atoms && observationClient) {
+        observation = observationClient.session({
+          ticket: request.headers["x-duoflow-observation"],
+          requestId: body.request_id,
+          atomId: atoms.forCapability(body.capability_id).id,
+        });
+        observation.mark("started");
+      }
+      const output = await handlers[body.capability_id]({
+        body,
+        ticket,
+        observe: observation,
+      });
       requireThat(
         typeof output.summary === "string" &&
           output.summary.length <= 4000 &&
@@ -402,6 +435,7 @@ export function createModuleServer({
         "模块输出不符合契约。",
         500,
       );
+      observation?.mark("succeeded");
       return send(response, 200, {
         protocol_version: "1.1",
         request_id: body.request_id,
@@ -411,6 +445,7 @@ export function createModuleServer({
         data: output.data,
       });
     } catch (error) {
+      observation?.mark("failed");
       const safe =
         Number.isInteger(error.status) &&
         error.status >= 400 &&

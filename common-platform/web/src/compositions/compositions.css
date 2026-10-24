@@ -1,0 +1,339 @@
+.composition-workbench,
+.composition-editor {
+  display: grid;
+  gap: 20px;
+  max-width: 1160px;
+  margin: auto;
+}
+.composition-tabs,
+.composition-actions,
+.composition-add {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.composition-tabs {
+  border-bottom: 1px solid #d6e0e8;
+}
+.composition-tabs button {
+  background: transparent;
+  border: 0;
+  padding: 14px 18px;
+  color: #586679;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+}
+.composition-tabs button.active {
+  color: #176556;
+  border-bottom-color: #176556;
+  font-weight: 650;
+}
+.composition-editor h2,
+.composition-run h2,
+.composition-editor h3 {
+  margin: 0;
+}
+.composition-editor p,
+.composition-run p,
+.composition-start p {
+  color: #586679;
+  line-height: 1.7;
+  margin: 4px 0;
+}
+.composition-editor,
+.composition-run,
+.composition-start {
+  padding: 24px;
+  border: 1px solid #d6e0e8;
+  border-radius: 12px;
+  background: white;
+  min-width: 0;
+}
+.composition-start {
+  margin-top: 20px;
+}
+.composition-start form {
+  display: grid;
+  gap: 20px;
+}
+.composition-names {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.composition-add select {
+  flex: 1;
+  min-width: 180px;
+  padding: 12px;
+  border: 1px solid #cbd7df;
+  border-radius: 8px;
+}
+.composition-edit-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 16px;
+}
+.composition-edit-steps > li {
+  border: 1px solid #d6e0e8;
+  border-left: 4px solid #3a796a;
+  border-radius: 8px;
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.composition-edit-steps header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.composition-edit-steps header > div {
+  flex: 1;
+  min-width: 0;
+}
+.composition-edit-steps small {
+  color: #586679;
+}
+.composition-step-number {
+  display: grid;
+  place-items: center;
+  background: #e8f2ed;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+}
+.composition-binding {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(200px, 2fr);
+  align-items: center;
+  gap: 16px;
+}
+.composition-binding select {
+  padding: 10px;
+  min-width: 0;
+  border: 1px solid #cbd7df;
+  border-radius: 6px;
+  width: 100%;
+}
+.composition-editor summary,
+.composition-run summary {
+  color: #315a76;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 8px 0;
+}
+.composition-empty {
+  text-align: center;
+  padding: 40px 20px;
+  border: 1px dashed #bacbd4;
+  border-radius: 10px;
+  color: #586679;
+}
+.composition-saved-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+}
+.composition-saved-list button {
+  padding: 20px;
+  display: grid;
+  gap: 8px;
+  text-align: left;
+  background: white;
+  border: 1px solid #d6e0e8;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.composition-saved-list button[aria-pressed="true"] {
+  border-color: #176556;
+  background: #f3f8f5;
+}
+.composition-saved-list span {
+  font-size: 13px;
+  color: #586679;
+}
+.composition-run > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.composition-sequence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  list-style: none;
+  padding: 0;
+  gap: 12px;
+  margin: 24px 0;
+}
+.composition-sequence li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 100%;
+}
+.composition-sequence li > div {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  border: 1px solid #ccd8df;
+  border-radius: 8px;
+  padding: 14px;
+  min-width: 150px;
+}
+.composition-sequence small {
+  grid-column: 2;
+  color: #586679;
+}
+.composition-sequence li[data-status="succeeded"] > div {
+  background: #edf5ef;
+  border-color: #90b59c;
+}
+.composition-sequence li[data-status="waiting"] > div,
+.composition-sequence li[data-status="confirming"] > div {
+  background: #fff7e6;
+  border-color: #d8ba7e;
+}
+.composition-sequence li[data-status="unknown"] > div,
+.composition-sequence li[data-status="failed"] > div {
+  background: #fff0ee;
+  border-color: #d4a49a;
+}
+.composition-current {
+  display: grid;
+  gap: 16px;
+}
+.composition-records {
+  margin-top: 24px;
+  border-top: 1px solid #d6e0e8;
+  padding-top: 12px;
+}
+.composition-records section {
+  border-top: 1px solid #edf0f3;
+  padding: 12px 0;
+}
+.composition-roles {
+  margin-top: 16px;
+  border-top: 1px solid #d6e0e8;
+  padding-top: 12px;
+}
+.composition-roles section,
+.composition-role-binding {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid #d6e0e8;
+  border-radius: 8px;
+}
+.composition-roles header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.composition-roles h4 {
+  margin: 0;
+}
+.composition-roles select,
+.composition-roles input {
+  padding: 10px;
+  min-width: 0;
+  border: 1px solid #cbd7df;
+  border-radius: 6px;
+}
+.composition-live-graph {
+  margin: 16px 0;
+}
+.composition-graph {
+  display: grid;
+  gap: 14px;
+  padding-top: 12px;
+}
+.composition-graph header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.composition-graph h3 {
+  margin: 0;
+}
+.composition-graph small {
+  color: #586679;
+}
+.composition-graph-matches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.composition-graph-canvas {
+  max-height: 650px;
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid #d6e0e8;
+  border-radius: 8px;
+  background: #f5f8fa;
+}
+.composition-graph svg {
+  display: block;
+}
+.composition-graph svg text {
+  fill: #263b4a;
+  font-size: 13px;
+}
+.composition-graph svg .composition-graph-group {
+  font-size: 15px;
+  font-weight: 650;
+}
+.composition-graph svg .composition-graph-caption {
+  font-size: 11px;
+  fill: #586679;
+}
+.composition-graph g[role="button"] {
+  cursor: pointer;
+  outline-offset: 4px;
+}
+.composition-node-details {
+  padding: 16px;
+  background: #f4f8f5;
+  border: 1px solid #cadbd0;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+.composition-observation-status {
+  font-size: 12px;
+}
+@media (max-width: 650px) {
+  .composition-editor,
+  .composition-run,
+  .composition-start {
+    padding: 16px;
+  }
+  .composition-names,
+  .composition-binding {
+    grid-template-columns: 1fr;
+  }
+  .composition-edit-steps > li {
+    padding: 12px;
+  }
+  .composition-edit-steps header {
+    flex-wrap: wrap;
+  }
+  .composition-sequence {
+    display: grid;
+  }
+  .composition-sequence li {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .composition-sequence li > svg {
+    transform: rotate(90deg);
+    align-self: center;
+  }
+}

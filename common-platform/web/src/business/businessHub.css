@@ -1,0 +1,142 @@
+.business-hub {
+  display: grid;
+  gap: 24px;
+  max-width: 1160px;
+  margin: auto;
+}
+.business-hub-header,
+.business-module > header,
+.business-opened > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.business-hub-header h2 {
+  margin: 8px 0;
+  font-size: 24px;
+}
+.business-hub-header p,
+.business-module p {
+  margin: 6px 0;
+  color: var(--muted, #586679);
+  line-height: 1.7;
+}
+.business-hub-filter {
+  display: flex;
+  gap: 12px;
+}
+.business-hub-filter label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  background: #fff;
+  border: 1px solid #d6e0e8;
+  border-radius: 8px;
+  padding: 0 12px;
+}
+.business-hub-filter input {
+  width: 100%;
+  min-width: 0;
+  padding: 12px 0;
+  border: 0;
+  background: transparent;
+}
+.business-hub-filter select {
+  max-width: 40%;
+  padding: 10px;
+  border: 1px solid #d6e0e8;
+  border-radius: 8px;
+}
+.business-module-list {
+  display: grid;
+  gap: 20px;
+}
+.business-module,
+.business-opened {
+  border: 1px solid #d6e0e8;
+  border-radius: 12px;
+  background: #fff;
+  padding: 24px;
+  min-width: 0;
+}
+.business-module > header {
+  justify-content: flex-start;
+  align-items: flex-start;
+  padding-bottom: 18px;
+}
+.business-module > header > div {
+  flex: 1;
+}
+.business-module h3,
+.business-module h4,
+.business-opened h3 {
+  margin: 0;
+}
+.business-module small {
+  color: #586679;
+}
+.business-entry-list {
+  display: grid;
+  gap: 0;
+}
+.business-entry-list article {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 20px 0;
+  border-top: 1px solid #e4eaf0;
+}
+.business-entry-list article > div {
+  min-width: 0;
+  flex: 1;
+}
+.business-entry-list button {
+  flex-shrink: 0;
+}
+.business-entry-list details {
+  margin-top: 10px;
+  font-size: 13px;
+}
+.business-entry-list summary {
+  cursor: pointer;
+  color: #315a76;
+}
+.business-entry-list dl {
+  display: grid;
+  grid-template-columns: 75px 1fr;
+  gap: 8px;
+}
+.business-entry-list dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.business-opened > header {
+  margin-bottom: 20px;
+}
+@media (max-width: 650px) {
+  .business-hub-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .business-module,
+  .business-opened {
+    padding: 16px;
+  }
+  .business-entry-list article {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .business-module > header {
+    flex-wrap: wrap;
+  }
+  .business-hub-filter {
+    flex-direction: column;
+  }
+  .business-hub-filter select {
+    max-width: none;
+  }
+}

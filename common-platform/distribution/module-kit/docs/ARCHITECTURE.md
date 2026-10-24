@@ -4,7 +4,7 @@
 
 | 目录 | 职责 | 阅读重点 |
 | --- | --- | --- |
-| contracts/ | 独立公开协议和 Schema | manifest、invoke、access、registration、workflow |
+| contracts/ | 独立公开协议和 Schema | manifest、invoke、access、registration、workflow、module-graph、flow-exports、runtime-observation、compositions |
 | scripts/module_kit.py | 生成包、解析源码及检查引用 | scaffold、frontend_exports、check |
 | duoflow_validation/ | 平台纯校验逻辑的发布副本 | register、validate_definition、validate_registration |
 | templates/module-kit/blueprints/ | 两种可运行模板 | business、handlers/server、共享前端 |
@@ -19,3 +19,9 @@
 验证器由平台真实函数通过 AST 选取，移除数据库和服务装配依赖；原函数体保留，来源见 VALIDATOR-SOURCES.json。主平台同步测试检查抽取逻辑及拒绝行为。它是发布副本，升级需来自配套平台版本。
 
 新增动作应同时检查公开声明、实际处理器、权限映射、输入输出、共享组件和业务模型；新增状态还需检查后端转移、状态图、数据版本与独立业务预期。注释说明目的、输入来源和失效条件，避免只复述函数名称。
+
+## 从组件到整体业务
+
+`module-graph.json` 保存组件定义与业务节点关系；运行实例使用独立实例编号关联实际对象。前端事件对应共享宿主支持的操作，后端原子对应真实能力处理器。`flow-exports.json` 从完整模块中选出对外入口、数据权限和完成边界；主平台按这些公开定义构建组合。
+
+`sdk/python/graph_testing.py` 与 `sdk/node/graph-testing.mjs` 核对真实动作前后的对象和状态，校验原子结果。运行事件在实际处理后发出；发送失败保留业务结果，按有界队列补送，平台显示缺失与过期情况。完整业务模型和源码关联由 Observer 持续维护，公开图用于平台连接与观察。

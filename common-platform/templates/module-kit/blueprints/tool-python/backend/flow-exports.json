@@ -1,0 +1,25 @@
+{
+  "exports_version": "1.0",
+  "module_id": "__MODULE_ID__",
+  "module_version": "1.0.0",
+  "flows": [
+    {
+      "id": "__MODULE_ID__.analyze.public",
+      "version": "1.0.0",
+      "title": "整理与统计文本",
+      "description": "统一换行和空白，返回字符、行和空白分隔片段数量。",
+      "entry": {
+        "kind": "capability",
+        "id": "__MODULE_ID__.analyze",
+        "version": "1.0.0"
+      },
+      "node_ids": [
+        "__MODULE_ID__.analyze.business"
+      ],
+      "required_permissions": [
+        "__MODULE_ID__.use"
+      ],
+      "data_access": []
+    }
+  ]
+}

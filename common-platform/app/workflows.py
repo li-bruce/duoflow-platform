@@ -712,7 +712,16 @@ class Workflows:
             conversation_id,
             workflow_guard=guard,
         )
-        return {"instance": await self.get(actor, instance_id), "result": result}
+        # The command already has a receipt. A coordinator or another view can
+        # adopt its result while get() awaits the remote object/list reads. Retry
+        # only that authorized read; never send the accepted command again.
+        for attempt in range(3):
+            try:
+                instance = await self.get(actor, instance_id)
+                return {"instance": instance, "result": result}
+            except PlatformError as exc:
+                if exc.code != "revision_conflict" or attempt == 2:
+                    raise
 
     def begin_action(self, db, actor, guard, spec, payload):
         """提交前再次核对动作、输入与授权，阻止旧页面覆盖新版本。"""

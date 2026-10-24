@@ -15,6 +15,7 @@ from jsonschema import Draft202012Validator
 
 VERSION = "1.0"
 FEATURES = ["invoke-1.0", "invoke-1.1", "access-1.0", "shared-hosts-1.0", "registration-1.0"]
+FEATURES += ["registration-1.1", "module-graph-1.0", "flow-exports-1.0", "runtime-observation-1.0"]
 CHECKS = [
     ("manifest", "能力声明与输入输出"),
     ("registration", "数据、流程与权限声明"),
@@ -67,8 +68,14 @@ def digest(value):
 
 def validate_registration(document, manifest):
     """Reject unknown fields and inconsistent references before contacting handlers."""
+    version = document.get("registration_version") if isinstance(document, dict) else None
+    if version not in {"1.0", "1.1"}:
+        raise ValueError("registration_version")
+    folder = "v1.1" if version == "1.1" else "v1"
     schema = json.loads(
-        (ROOT / "contracts/registration/v1/definition.schema.json").read_text(encoding="utf-8")
+        (ROOT / f"contracts/registration/{folder}/definition.schema.json").read_text(
+            encoding="utf-8"
+        )
     )
     Draft202012Validator(schema).validate(document)
     if document["workflow_operations"] != sorted(document["workflow_operations"]):
@@ -133,13 +140,25 @@ def validate_registration(document, manifest):
         or document["host_requirements"]["workflows"]
     ):
         raise ValueError("registration_permissions")
+    if version == "1.1":
+        from .module_graph import validate_module_graph
+        from .flow_exports import validate_export_references
+
+        if permissions["mode"] == "platform_access":
+            mappings = permissions["definition"]["command_mappings"]
+            if len(mappings) != len(caps) or any("command" in mapping for mapping in mappings):
+                raise ValueError("registration_concrete_permissions")
+        validate_module_graph(document["module_graph"], manifest)
+        validate_export_references(
+            document["flow_exports"], manifest, document, document["module_graph"]
+        )
     return document
 
 
 def make_offer(manifest, registration, nonce):
     """Pin both complete documents and platform support for the module to verify."""
     return {
-        "registration_version": VERSION,
+        "registration_version": registration["registration_version"],
         "nonce": nonce,
         "contract_digest": digest({"manifest": manifest, "registration": registration}),
         "platform_features": FEATURES,
@@ -150,8 +169,12 @@ def make_offer(manifest, registration, nonce):
 
 def validate_confirmation(response, offer):
     """An acknowledgement must cover every actual handler and required endpoint."""
+    modern = offer["registration_version"] == "1.1"
+    folder = "v1.1" if modern else "v1"
     schema = json.loads(
-        (ROOT / "contracts/registration/v1/confirmation.schema.json").read_text(encoding="utf-8")
+        (ROOT / f"contracts/registration/{folder}/confirmation.schema.json").read_text(
+            encoding="utf-8"
+        )
     )
     Draft202012Validator(schema).validate(response)
     expected = {
@@ -168,13 +191,16 @@ def validate_confirmation(response, offer):
     for field in ("registration_version", "nonce", "contract_digest"):
         if response[field] != offer[field]:
             raise ValueError("registration_confirmation")
-    if response["accepted"] is not True or response["checks"] != {
+    checks = {
         "platform_contract": True,
         "local_manifest": True,
         "local_registration": True,
         "handlers": True,
         "schemas": True,
-    }:
+    }
+    if modern:
+        checks.update(atomic_bindings=True, runtime_callback=True)
+    if response["accepted"] is not True or response["checks"] != checks:
         raise ValueError("registration_confirmation")
     if not all(value is True for value in response["checks"].values()):
         raise ValueError("registration_confirmation")

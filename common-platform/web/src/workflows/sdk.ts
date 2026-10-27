@@ -21,6 +21,9 @@ export type WorkflowInstance = {id:string;flow_id:string;flow_version:string;tit
 export type WorkflowStepProps = {
   surface:'page'|'conversation'; projection:ObjectProjection|null; objects:ObjectProjection[];
   draft:Data; updateDraft:(draft:Data)=>void; busy:boolean; actions:WorkflowAction[];
+  /** Acceptance may resolve while a background command is still queued. Do not
+   * infer business success or clear submitted input until its committed result
+   * is visible; updateDraft is ignored while the host is busy. */
   execute:(actionId:string,command:Data)=>Promise<unknown>; refresh:()=>Promise<void>;
   objectPages:ObjectPageCursor[]; loadMoreObjects:(objectType:string)=>Promise<void>;
   detailPage:(section:string,cursor?:string,limit?:number)=>Promise<DetailPage>;

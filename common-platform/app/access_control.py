@@ -179,6 +179,11 @@ m = g(r.sub, p.sub, r.dom) && r.dom == p.dom && r.act == p.act
 """
 
     def allowed_grants(self, subject_id, permission, grants):
+        # This fixed RBAC model isolates every grant in its own domain. A domain
+        # with no policy for this action cannot contribute to authorization.
+        grants = [grant for grant in grants if permission in grant["permissions"]]
+        if not grants:
+            return []
         model = casbin.Model()
         model.load_model_from_text(self.MODEL)
         enforcer = casbin.Enforcer(model)
@@ -630,7 +635,13 @@ class AccessControl:
         _, grants = self._context(actor)
         if not grants:
             return False
-        return bool(self.engine.allowed_grants(actor["id"], permission, grants))
+        # Catalog visibility needs one matching intact domain, not every grant
+        # ID. Keep current repository reads and use Casbin on each candidate;
+        # do not cache a prior allow across expiry, revocation or role changes.
+        return any(
+            self.engine.allowed_grants(actor["id"], permission, [grant])
+            for grant in grants if permission in grant["permissions"]
+        )
 
     def matching_scopes(self, actor, permission):
         """Return intact OR-of-AND scopes to a trusted query adapter, never flatten them."""

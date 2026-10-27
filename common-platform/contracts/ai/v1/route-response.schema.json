@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "service_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]{2,119}$"
+    },
+    "source": {
+      "enum": [
+        "platform",
+        "module"
+      ]
+    },
+    "binding_revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "module_config_revision": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "platform_config_digest": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "service_id",
+    "source",
+    "binding_revision",
+    "module_config_revision",
+    "platform_config_digest"
+  ]
+}

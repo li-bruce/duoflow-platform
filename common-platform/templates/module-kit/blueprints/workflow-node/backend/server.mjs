@@ -4,6 +4,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { createModuleServer, requireThat } from "../sdk/node/runtime.mjs";
 import { createAccessClient } from "../sdk/node/access-client.mjs";
 import { createObservationClient } from "../sdk/node/observation.mjs";
+import { AIServiceManager } from "../sdk/node/ai-service.mjs";
 import { createBusiness } from "./business.mjs";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -23,11 +24,13 @@ export function createService({
   projects,
   fetchImpl,
   observationUrl,
+  aiManager = null,
 }) {
   const business = createBusiness({
     filename,
     projects,
     decide: createAccessClient({ callbackUrl, fetchImpl }),
+    ai: aiManager,
   });
   try {
     const observer = createObservationClient({
@@ -61,6 +64,7 @@ export function createService({
       workflowHandlers: business.workflowHandlers,
       graph: moduleGraph,
       observationClient: observer,
+      aiManager,
     });
     return {
       server,
@@ -97,6 +101,11 @@ if (
     observationUrl: process.env.PLATFORM_OBSERVATION_URL,
     filename: path.join(directory, "records.sqlite"),
     projects,
+    aiManager: registration.ai_services?.length ? new AIServiceManager({
+      services: registration.ai_services,
+      dataDir: path.join(directory, "ai"),
+      platformBaseUrl: process.env.PLATFORM_AI_BASE_URL ?? null,
+    }) : null,
   });
   const port = Number(process.env.PORT || 0);
   requireThat(

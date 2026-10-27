@@ -77,3 +77,17 @@ def test_destination_cannot_contain_source(tmp_path, monkeypatch):
     monkeypatch.setattr(exporter, 'source_files', lambda _: [])
     with pytest.raises(ValueError):
         exporter.export(tmp_path, tmp_path)
+def test_source_read_contract_and_portable_clients_are_exported():
+    from scripts.export_framework import source_files
+
+    root = Path(__file__).resolve().parents[1]
+    names = {path.relative_to(root).as_posix() for path in source_files(root)}
+    assert {
+        'app/source_reads.py', 'tests/test_source_reads.py',
+        'contracts/access/v1/source-read-request.schema.json',
+        'contracts/access/v1/source-reads.md',
+        'templates/module-kit/sdk/node/source-read-client.mjs',
+        'templates/module-kit/sdk/node/source-read-client.test.mjs',
+        'templates/module-kit/sdk/python/source_reads.py',
+        'templates/module-kit/sdk/python/tests/test_source_read_client.py',
+    } <= names

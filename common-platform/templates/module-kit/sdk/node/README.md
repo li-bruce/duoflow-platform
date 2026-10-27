@@ -1,5 +1,7 @@
 # Node 模块 SDK v1
 
+可选 AI 服务使用 `ai-service.mjs` 的 `AIServiceManager`，声明于 `registration.ai_services`，由 `createModuleServer({... , aiManager})` 绑定实际私有控制接口。模块可独立配置自有 API；接入平台后每次按管理员来源绑定执行，平台来源经中央 broker，模块来源本地执行，禁止静默 fallback。`chatWithReceipt` 返回模型结果及配置/绑定修订，最终业务提交前再次 `validate`；`chat` 仅返回结果。具体 Node/Python 接线、配置字段和运行边界见 [AI 服务示例](../../examples/ai-services/README.md)。
+
 这是可随模块交付的服务端代码，要求 Node.js 24。生成器把本目录复制到生成包的 `sdk/node/`。不依赖 npm 安装，不导入主框架内部 Python，也不包含浏览器 SDK。
 
 稳定边界：
@@ -21,4 +23,18 @@
 
 当前事务参考只面向一个 Node 进程和本地 SQLite。不要把持锁期间的中央回调扩展成长计算或外部写入；分布式副作用需要 outbox/inbox、领域幂等和恢复设计。本 SDK 不提供登录、角色引擎、游客、SSO、通知、长期委派、文件存储、长任务或聊天分支；这些能力不能通过添加同名配置字段声称实现。
 
+含网络授权的对象/列表读取不应排入全局写事务队列。业务可使用独立只读连接取得已提交快照，再按当前权限和修订复检；明确限制并发、期限、候选分页与排队。参考 Store 仍是串行写事务工具，不会自动提供这种读调度。
+
 SDK 升级随包显式发布，不从网络动态加载代码。已有独立服务可以只复用 `access-client.mjs` 和固定传输边界，保留原数据库与业务事务；不要求迁移到参考 `Store`。
+# Registered source reads
+
+`source-read-client.mjs` is a server-only optional `source-reads-1.0` callback
+client. Configure the exact platform `/api/v1/access/source-reads` URL. Pass the
+current target request ticket and repository facts; never forward that ticket to
+a source module or retain tickets in business data. The result remains subject
+to the consumer's independent category, purpose and field adapters.
+
+`SourceReadError` exposes only a safe `code` and HTTP `status`. Preserve the
+distinction between authorization (403), version conflict (409), contract (422)
+and unavailability (503); do not turn every source failure into permission denial.
+Private upstream messages, headers and tickets are never copied into the error.

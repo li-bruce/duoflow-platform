@@ -267,6 +267,8 @@ export function createModuleServer({
   workflowHandlers = {},
   graph = null,
   observationClient = null,
+  requiredPlatformFeatures = [],
+  aiManager = null,
 }) {
   // Snapshot the same dispatch tables that acceptance checks. Caller mutation
   // after startup must not silently remove a previously confirmed interface.
@@ -277,6 +279,14 @@ export function createModuleServer({
   const atoms = graph
     ? createAtomBindings({ graph, manifest, handlers })
     : null;
+  requireThat(
+    registration.ai_services?.length
+      ? aiManager && canonical(aiManager.services) === canonical(registration.ai_services)
+      : aiManager === null,
+    "ai_registration_binding",
+    "AI 服务声明必须绑定实际的服务管理器。",
+    500,
+  );
   requireThat(
     typeof token === "string" && token.length >= 24,
     "service_config",
@@ -302,6 +312,7 @@ export function createModuleServer({
     compile,
     graph: atoms?.document,
     runtimeProbe: observationClient?.probe,
+    requiredPlatformFeatures,
   });
   return http.createServer(async (request, response) => {
     let observation;
@@ -318,6 +329,15 @@ export function createModuleServer({
         return send(response, 200, { status: "ok" });
       if (request.method === "GET" && request.url === "/platform/v1/manifest")
         return send(response, 200, manifest);
+      const aiControl = request.url?.match(/^\/platform\/v1\/ai\/services\/([a-z][a-z0-9_.-]{1,120})\/(config|test)$/);
+      if (aiControl && aiManager) {
+        // Service Bearer was verified above. These controls are never business
+        // capabilities, and must not appear in manifests or browser bundles.
+        return send(response, 200, await aiManager.control(
+          aiControl[1], request.method, aiControl[2],
+          request.method === "GET" ? {} : await bodyOf(request, 32768),
+        ));
+      }
       if (
         atoms &&
         request.method === "GET" &&
@@ -335,12 +355,15 @@ export function createModuleServer({
         request.url === "/platform/v1/registration"
       )
         return send(response, 200, registrar.document);
-      if (request.method === "POST" && request.url === "/platform/v1/handshake")
+      if (request.method === "POST" && request.url === "/platform/v1/handshake") {
+        requireThat(!registration.ai_services?.length || aiManager.platformConnected === true,
+          "ai_platform_not_configured", "接入前请配置 AI 服务的固定平台地址。", 409);
         return send(
           response,
           200,
           await registrar.confirm(await bodyOf(request, 1048576)),
         );
+      }
       const operation = request.url?.startsWith("/platform/v1/workflow/")
         ? request.url.slice("/platform/v1/workflow/".length)
         : null;

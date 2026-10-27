@@ -194,6 +194,34 @@ class StandaloneTests(unittest.TestCase):
 class ObserverInputTests(unittest.TestCase):
     """Public mappings must share the exact inputs accepted by change_sync."""
 
+    def test_preflight_rejects_malformed_current_plan_without_writing(self):
+        root = self.root
+        (root / "sync.json").write_text(json.dumps({"require_mapping_witnesses": True, "mapping_contract": "mapping.json"}))
+        (root / "mapping.json").write_text(json.dumps({"schema": "bo-mapping/v1", "checks": []}))
+        before = (root / "mapping.json").read_bytes()
+        with self.assertRaises(observer.ObserverInputError) as result:
+            observer.preflight(root)
+        self.assertEqual(result.exception.code, "observer_mapping_plan_cases")
+        self.assertEqual((root / "mapping.json").read_bytes(), before)
+
+    def test_preflight_preserves_an_invalid_protected_baseline_and_explains_it(self):
+        root = self.root
+        plan = {"schema":"bo-mapping/v1", "cases":["case"], "modes":["on"], "fields":[{"id":"selected"}], "source":"user", "actual_collection":["facts"], "actual_id":["id"], "export":{}}
+        (root / "sync.json").write_text(json.dumps({"require_mapping_witnesses": True, "mapping_contract":"mapping.json"}))
+        (root / "mapping.json").write_text(json.dumps(plan))
+        (root / ".stategraph").mkdir()
+        (root / ".stategraph/active.json").write_text(json.dumps({"change":"changes/first"}))
+        baseline = root / "changes/first/baseline.json"
+        baseline.parent.mkdir(parents=True)
+        baseline.write_text(json.dumps({"mapping_contract":{"schema":"bo-mapping/v1"}}))
+        before = baseline.read_bytes()
+        with self.assertRaises(observer.ObserverInputError) as result:
+            observer.preflight(root)
+        self.assertEqual(result.exception.code, "observer_baseline_mapping_cases")
+        self.assertEqual(baseline.read_bytes(), before)
+        baseline.write_text(json.dumps({"mapping_contract":plan}))
+        self.assertEqual(observer.preflight(root)["sync_acceptance"], "not_checked")
+
     def setUp(self):
         (ROOT / "work").mkdir(exist_ok=True)
         self.temporary = tempfile.TemporaryDirectory(dir=ROOT / "work")

@@ -144,6 +144,10 @@ def create_app(data_dir: Path | None = None, start_worker=True, gateway=None, re
         gateway,
     )
     app.state.remote_services = remote_services
+    from .ai_services import AIServices
+
+    ai_services = AIServices(runtime)
+    app.state.ai_services = ai_services
     app.state.agent_engine = agent_engine
     app.add_middleware(
         TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "[::1]", "testserver"]
@@ -212,23 +216,22 @@ def create_app(data_dir: Path | None = None, start_worker=True, gateway=None, re
         # Management uses a secret-input channel rather than recording plaintext invocation input.
         if (
             request.url.path.startswith(
-                ("/api/v1/models", "/api/v1/remote-services", "/api/v1/modules")
+                ("/api/v1/models", "/api/v1/remote-services", "/api/v1/modules", "/api/v1/ai-services")
             )
-            and request.method in ("POST", "DELETE")
+            and request.method in ("POST", "PUT", "DELETE")
             and response.status_code < 400
         ):
             try:
                 actor = require_user(request)
                 with sessions.begin() as db:
-                    category = (
-                        "modules"
-                        if request.url.path.startswith("/api/v1/modules")
-                        else (
-                            "services"
-                            if request.url.path.startswith("/api/v1/remote-services")
-                            else "models"
-                        )
-                    )
+                    if request.url.path.startswith("/api/v1/modules"):
+                        category = "modules"
+                    elif request.url.path.startswith("/api/v1/remote-services"):
+                        category = "services"
+                    elif request.url.path.startswith("/api/v1/ai-services"):
+                        category = "ai-services"
+                    else:
+                        category = "models"
                     audit(
                         db,
                         actor["id"],
@@ -473,6 +476,9 @@ def create_app(data_dir: Path | None = None, start_worker=True, gateway=None, re
     from .access_bridge import create_access_bridge_router
 
     app.include_router(create_access_bridge_router(runtime.access_bridge))
+    from .source_reads import SourceReads, create_source_read_router
+
+    app.include_router(create_source_read_router(SourceReads(runtime)))
     from .runtime_observation import create_observation_router
 
     app.include_router(create_observation_router(runtime.observations, require_user))
@@ -499,6 +505,9 @@ def create_app(data_dir: Path | None = None, start_worker=True, gateway=None, re
     app.include_router(
         create_model_router(gateway, require_admin, require_user, check_csrf), prefix="/api/v1"
     )
+    from .ai_routes import create_ai_router
+
+    app.include_router(create_ai_router(ai_services, require_admin, check_csrf))
     app.include_router(
         create_remote_router(remote_services, runtime, require_admin, check_csrf), prefix="/api/v1"
     )

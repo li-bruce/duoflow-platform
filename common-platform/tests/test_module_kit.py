@@ -262,6 +262,39 @@ def test_node_package_runs_real_http_and_persistence_tests(tmp_path):
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+@pytest.mark.parametrize('template', ['tool-python', 'workflow-node'])
+def test_generated_ai_example_is_portable_and_offline_by_default(tmp_path, template):
+    package = generated(tmp_path, template)
+    runtime = 'node' if template == 'workflow-node' else 'python'
+    script = package / 'examples/ai-services' / ('standalone-node.mjs' if runtime == 'node' else 'standalone-python.py')
+    assert script.is_file()
+    assert (package / 'examples/ai-services/README.md').is_file()
+    env = {**os.environ, 'MODULE_AI_DATA_DIR': str(tmp_path / 'private-ai')}
+    result = subprocess.run([str(NODE) if runtime == 'node' else sys.executable, str(script), 'status'],
+                            cwd=tmp_path, env=env, capture_output=True, text=True, encoding='utf-8', timeout=20,
+                            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads(result.stdout) == {'revision': 0, 'profile': None}
+
+
+def test_node_and_python_ai_managers_share_encrypted_configuration_format(tmp_path):
+    scripts = ROOT / 'templates/module-kit/examples/ai-services'
+    env = {**os.environ, 'MODULE_AI_DATA_DIR': str(tmp_path / 'private-ai')}
+    profile = dict(name='Synthetic', base_url='https://provider.example/v1', model='synthetic-model',
+                   api_key='SYNTHETIC_CROSS_RUNTIME_KEY', enabled=True, temperature=0.2, max_tokens=32, timeout_seconds=2)
+    saved = subprocess.run([str(NODE), str(scripts / 'standalone-node.mjs'), 'configure'],
+                           input=json.dumps(profile), cwd=tmp_path, env=env, capture_output=True, text=True, encoding='utf-8', timeout=20,
+                           creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    assert saved.returncode == 0, saved.stderr
+    restored = subprocess.run([sys.executable, str(scripts / 'standalone-python.py'), 'status'],
+                              cwd=tmp_path, env=env, capture_output=True, text=True, encoding='utf-8', timeout=20,
+                              creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    assert restored.returncode == 0, restored.stderr
+    assert json.loads(restored.stdout) == json.loads(saved.stdout)
+    assert profile['api_key'] not in restored.stdout + saved.stdout
+    assert profile['api_key'].encode() not in (tmp_path / 'private-ai/module-ai.config.enc').read_bytes()
+
+
 def platform_root(path, package=None, kind='tool'):
     (path / 'extensions').mkdir(parents=True)
     (path / 'extensions/installed.json').write_text('{"modules":[]}', encoding='utf-8')

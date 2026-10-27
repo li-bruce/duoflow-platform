@@ -76,7 +76,9 @@ const ordinaryDenials = new Set([
   "separation_of_duties",
   "fact_condition_failed",
 ]);
-export function createBusiness({ filename, projects, decide }) {
+export function createBusiness({ filename, projects, decide, ai = null }) {
+  // Optional injected AIServiceManager. The neutral workflow below has no AI
+  // action; a real module explicitly declares and calls its own AI capability.
   requireThat(
     projectCheck(projects) &&
       new Set(projects.map((item) => item.project_id)).size === projects.length,

@@ -46,6 +46,8 @@ duoflow-observer.json 示例：
 
 ## 联合检查
 
+在首次 `change_sync begin` 前先运行 `scripts/observer_bridge.py preflight --module <模块>`。它只检查当前映射计划和已有受保护基线的结构，不执行业务、不写基线、不证明运行覆盖。固定上游在初始计划缺少 cases/modes/fields 时可能仍建立基线，后续比较出现 KeyError；本工具会提前给出 observer_mapping_plan_* 或 observer_baseline_mapping_* 稳定诊断。已有坏基线必须保留原字节及失败证据，不通过补空列表、重置或直接改旧基线伪造通过。完整 gate 仍执行上游原检查，生产功能与完整 Observer 同步结果分别报告。
+
 开始第一轮业务实现前，把以下内容落到实际文件中。完整 gate 会逐项检查这些材料：
 
 | 材料 | 应包含的实际内容 |

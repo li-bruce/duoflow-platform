@@ -25,10 +25,20 @@ class Registration:
         workflow_handlers=None,
         *,
         graph=None,
-        runtime_probe=None
+        runtime_probe=None,
+        required_platform_features=(),
+        ai_manager=None,
     ):
         """Validate startup bindings and pin complete local declarations."""
         workflow_handlers = workflow_handlers or {}
+        self._need(
+            isinstance(required_platform_features, (list, tuple))
+            and len(required_platform_features) <= 20
+            and all(isinstance(item, str) and re.fullmatch(r"[a-z][a-z0-9.-]{0,79}", item)
+                    for item in required_platform_features)
+            and len(set(required_platform_features)) == len(required_platform_features)
+        )
+        self.required_platform_features = tuple(required_platform_features)
         self._need(
             document.get("registration_version") in {"1.0", "1.1"}
             and manifest["protocol_version"] in ("1.0", "1.1", "1.2")
@@ -38,6 +48,32 @@ class Registration:
             == (manifest["module"]["id"], manifest["module"]["version"])
         )
         self.ids = sorted(cap["id"] for cap in manifest["capabilities"])
+        if "ai_services" in document:
+            services = document["ai_services"]
+            self._need(isinstance(services, list) and len(services) <= 16
+                       and (not services or document["permissions"]["mode"] == "platform_access"))
+            ai_ids = set()
+            for service in services:
+                self._need(
+                    isinstance(service, dict)
+                    and set(service) == {"id", "title", "description", "capability_ids", "supported_sources"}
+                    and isinstance(service["id"], str)
+                    and re.fullmatch(r"[a-z][a-z0-9_.-]{2,119}", service["id"])
+                    and service["id"].startswith(manifest["module"]["id"] + ".")
+                    and service["id"] not in ai_ids
+                    and isinstance(service["title"], str) and 0 < len(service["title"]) <= 200
+                    and isinstance(service["description"], str) and 0 < len(service["description"]) <= 2000
+                    and isinstance(service["capability_ids"], list) and 0 < len(service["capability_ids"]) <= 64
+                    and all(item in self.ids for item in service["capability_ids"])
+                    and len(set(service["capability_ids"])) == len(service["capability_ids"])
+                    and isinstance(service["supported_sources"], list) and service["supported_sources"]
+                    and all(item in {"platform", "module"} for item in service["supported_sources"])
+                    and len(set(service["supported_sources"])) == len(service["supported_sources"])
+                )
+                ai_ids.add(service["id"])
+        self.ai_manager = ai_manager
+        self._need(not document.get("ai_services") or ai_manager is not None
+                   and ai_manager.services == document["ai_services"])
         self.modern = document["registration_version"] == "1.1"
         self.runtime_probe = runtime_probe
         if self.modern:
@@ -74,6 +110,8 @@ class Registration:
 
     def confirm(self, offer):
         """Actively compare the platform offer, then acknowledge its unique nonce."""
+        self._need(not self.document.get("ai_services")
+                   or self.ai_manager.platform_connected is True)
         self._need(
             isinstance(offer, dict)
             and set(offer)
@@ -99,6 +137,9 @@ class Registration:
             "shared-hosts-1.0",
             "registration-1.0",
         }
+        required.update(self.required_platform_features)
+        if self.document.get("ai_services"):
+            required.add("ai-services-1.0")
         if self.document["permissions"]["mode"] == "platform_access":
             required.add("access-1.0")
         if self.modern:

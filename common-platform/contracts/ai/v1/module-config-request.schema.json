@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "expected_revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "base_url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 131072
+        },
+        "timeout_seconds": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 300
+        },
+        "api_key": {
+          "type": "string",
+          "maxLength": 8192
+        },
+        "clear_api_key": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "base_url",
+        "model",
+        "enabled",
+        "temperature",
+        "max_tokens",
+        "timeout_seconds"
+      ]
+    }
+  },
+  "required": [
+    "expected_revision",
+    "profile"
+  ]
+}

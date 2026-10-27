@@ -58,6 +58,7 @@ function FlowInstance({ instanceId, surface = "page", onChanged }: HostProps) {
   const working = useRef(false);
   const generation = useRef(0);
   const readSequence = useRef(0);
+  const pollingRead = useRef(false);
   const path = `/flows/instances/${instanceId}`;
   const active = useCallback(
     (version: number) => alive.current && generation.current === version,
@@ -152,6 +153,17 @@ function FlowInstance({ instanceId, surface = "page", onChanged }: HostProps) {
       }
     }
   }, [path, apply, active, clearAccess]);
+  const pollRefresh = useCallback(async () => {
+    // Automatic intervals must not supersede a still-valid slow response on
+    // every tick. Explicit refreshes keep their existing latest-read ordering.
+    if (pollingRead.current) return;
+    pollingRead.current = true;
+    try {
+      await refresh();
+    } finally {
+      pollingRead.current = false;
+    }
+  }, [refresh]);
   const reload = useCallback(async () => {
     if (reading.current || working.current) return;
     const version = ++generation.current;
@@ -269,10 +281,10 @@ function FlowInstance({ instanceId, surface = "page", onChanged }: HostProps) {
         !working.current &&
         !reading.current
       )
-        void refresh().catch(setError);
+        void pollRefresh().catch(setError);
     }, 1400);
     return () => clearInterval(poll);
-  }, [pending, jobPending, refresh]);
+  }, [pending, jobPending, pollRefresh]);
   useEffect(() => {
     const poll = setInterval(() => {
       if (
@@ -281,10 +293,10 @@ function FlowInstance({ instanceId, surface = "page", onChanged }: HostProps) {
         !working.current &&
         !reading.current
       )
-        void refresh().catch(setError);
+        void pollRefresh().catch(setError);
     }, 15000);
     return () => clearInterval(poll);
-  }, [refresh]);
+  }, [pollRefresh]);
   useEffect(() => {
     const guard = (e: BeforeUnloadEvent) => {
       if (desired.current || saving.current || busy) {

@@ -354,6 +354,9 @@ def access_appendix(snapshot, root: Path = ROOT):
     for name, schema in sorted(snapshot['access_contracts'].items()):
         text += block('contracts/' + name, schema)
     text += block('Access v1 执行与兼容边界', read(root, 'contracts/access/v1/README.md'), 'markdown')
+    text += block('AI services v1 声明、配置与调用边界', read(root, 'contracts/ai/v1/README.md'), 'markdown')
+    for ai_schema in sorted((root / 'contracts/ai/v1').glob('*.schema.json'), key=lambda p: p.as_posix()):
+        text += block(ai_schema.relative_to(root).as_posix(), json.loads(read(root, ai_schema.relative_to(root))))
     for title, name in [('合成权限附件 access-definition.json', 'definition'), ('合成管理授权请求（不随安装执行）', 'binding')]:
         text += block(title, snapshot['examples']['access'][name])
     text += block('当前管理、业务中心与桥接路由', {key: access[key] for key in ('management_routes', 'business_routes', 'remote_decision_routes')})

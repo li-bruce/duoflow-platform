@@ -437,6 +437,117 @@ def test_service_failure_bodies_and_redirect_credentials_never_escape(tmp_path, 
     assert len(calls) == 2 and calls[-1].url.host == "service.example"
 
 
+@pytest.mark.parametrize("status", [501, 502, 503, 504])
+@pytest.mark.parametrize("code", ["ai_provider_limited", "ai_provider_auth", "ai_provider_unavailable",
+                                  "ai_platform_rejected", "ai_disabled", "model_timeout"])
+def test_known_ai_failure_codes_use_static_safe_diagnostics(tmp_path, status, code):
+    secret = "canary-private-provider-key"
+    manager, calls = ready(tmp_path, lambda req: httpx.Response(status, json={
+        "error": {"code": code, "message": "malicious private body " + secret + TOKEN,
+                  "extra": {"api_key": secret}}
+    }))
+    with pytest.raises(RemoteServiceError) as caught:
+        run(manager.invoke("remote-test", 2, request()))
+    assert caught.value.code == "remote_" + code
+    assert caught.value.message == manager._AI_FAILURES[code]
+    assert secret not in str(caught.value) and TOKEN not in str(caught.value)
+    assert "malicious" not in str(caught.value) and len(calls) == 2
+
+
+@pytest.mark.parametrize("status", [501, 502, 503, 504])
+@pytest.mark.parametrize("payload", [
+    {"error": {"code": "unknown_canary_secret", "message": "private-canary"}},
+    {"error": {"code": ["ai_provider_limited"], "message": "private-canary"}},
+    {"error": {"message": "ai_provider_limited private-canary"}},
+    {"code": "ai_provider_limited", "message": "private-canary"},
+])
+def test_unknown_or_malformed_ai_failure_keeps_existing_generic_behavior(tmp_path, status, payload):
+    manager, calls = ready(tmp_path, lambda req: httpx.Response(status, json=payload))
+    with pytest.raises(RemoteServiceError) as caught:
+        run(manager.invoke("remote-test", 2, request()))
+    assert caught.value.code == "remote_service_failed"
+    assert "private-canary" not in str(caught.value) and "unknown_canary_secret" not in str(caught.value)
+    assert len(calls) == 2
+
+
+@pytest.mark.parametrize("status", [401, 403, 404, 413, 422])
+def test_ai_diagnostic_code_does_not_override_existing_auth_or_validation_status(tmp_path, status):
+    manager, _ = ready(tmp_path, lambda req: httpx.Response(status, json={
+        "error": {"code": "ai_provider_limited", "message": "private-canary"}
+    }))
+    with pytest.raises(RemoteServiceError) as caught:
+        run(manager.invoke("remote-test", 2, request()))
+    assert caught.value.code == ("remote_auth_failed" if status in {401, 403} else "remote_service_failed")
+
+
+def test_ai_failure_selector_body_limit_rejects_partial_known_code(tmp_path):
+    payload = {"error": {"code": "ai_provider_limited", "message": "private-canary " + "x" * 5000}}
+    manager, calls = ready(tmp_path, lambda req: httpx.Response(502, json=payload))
+    with pytest.raises(RemoteServiceError) as caught:
+        run(manager.invoke("remote-test", 2, request()))
+    assert caught.value.code == "remote_service_failed"
+    assert "private-canary" not in str(caught.value) and len(calls) == 2
+
+
+def test_non_invoke_errors_cannot_select_ai_diagnostic_wording(tmp_path):
+    manager, _ = ready(tmp_path)
+    manager._transport = httpx.MockTransport(lambda req: httpx.Response(502, json={
+        "error": {"code": "ai_provider_limited", "message": "private-canary"}
+    }))
+    item, token, _ = manager._snapshot("remote-test")
+    with pytest.raises(RemoteServiceError) as caught:
+        run(manager._request(item, token, "GET", "health"))
+    assert caught.value.code == "remote_service_failed"
+
+
+@pytest.mark.parametrize("remote_code,expected", [
+    ("ai_disabled", "remote_ai_disabled"),
+    ("ai_platform_rejected", "remote_ai_platform_rejected"),
+    ("revision_conflict", "remote_revision_conflict"),
+    ("state_conflict", "remote_state_conflict"),
+    ("idempotency_conflict", "remote_idempotency_conflict"),
+    ("unknown-private-canary", "remote_conflict"),
+])
+def test_modern_409_preserves_existing_business_conflicts_and_safe_ai_codes(tmp_path, remote_code, expected):
+    manager, _ = ready(tmp_path)
+    manager._transport = httpx.MockTransport(lambda req: httpx.Response(409, json={
+        "error": {"code": remote_code, "message": "private-canary " + TOKEN}
+    }))
+    item, token, _ = manager._snapshot("remote-test")
+    with pytest.raises(RemoteServiceError) as caught:
+        run(manager._request(item, token, "POST", "invoke", body={"protocol_version": "1.1"}))
+    assert caught.value.code == expected
+    assert TOKEN not in str(caught.value) and "private-canary" not in str(caught.value)
+
+
+@pytest.mark.parametrize("status,expected", [(403, "remote_forbidden"), (404, "remote_not_found"),
+                                           (413, "remote_input_too_large"), (422, "remote_validation"),
+                                           (503, "remote_unavailable")])
+def test_modern_unknown_error_code_retains_original_http_business_meaning(tmp_path, status, expected):
+    manager, _ = ready(tmp_path)
+    manager._transport = httpx.MockTransport(lambda req: httpx.Response(status, json={
+        "error": {"code": "unknown-private-canary", "message": TOKEN}
+    }))
+    item, token, _ = manager._snapshot("remote-test")
+    with pytest.raises(RemoteServiceError) as caught:
+        run(manager._request(item, token, "POST", "invoke", body={"protocol_version": "1.1"}))
+    assert caught.value.code == expected and TOKEN not in str(caught.value)
+
+
+def test_ai_failure_selector_decoding_has_its_own_deadline(tmp_path):
+    class SlowBody(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            yield b'{"error":{"code":"ai_provider_limited",'
+            await asyncio.sleep(5)
+            yield b'"message":"private-canary"}}'
+
+    manager, calls = ready(tmp_path, lambda req: httpx.Response(502, stream=SlowBody()))
+    with pytest.raises(RemoteServiceError) as caught:
+        run(manager.invoke("remote-test", 2, request()))
+    assert caught.value.code == "remote_service_failed" and len(calls) == 2
+    assert "private-canary" not in str(caught.value)
+
+
 def test_timeout_is_safe_and_not_retried(tmp_path):
     def timeout(req):
         raise httpx.ReadTimeout(TOKEN, request=req)

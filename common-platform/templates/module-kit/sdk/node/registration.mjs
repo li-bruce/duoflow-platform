@@ -35,7 +35,12 @@ export function createRegistration({
   compile,
   graph = null,
   runtimeProbe = null,
+  requiredPlatformFeatures = [],
 }) {
+  need(Array.isArray(requiredPlatformFeatures) && requiredPlatformFeatures.length <= 20 &&
+    requiredPlatformFeatures.every((value) => typeof value === "string" && /^[a-z][a-z0-9.-]{0,79}$/.test(value)) &&
+    new Set(requiredPlatformFeatures).size === requiredPlatformFeatures.length);
+  const extraFeatures = [...requiredPlatformFeatures];
   need(
     ["1.0", "1.1"].includes(registration?.registration_version) &&
       manifest.protocol_version === "1.2",
@@ -45,6 +50,26 @@ export function createRegistration({
       registration.module_version === manifest.module.version,
   );
   const ids = manifest.capabilities.map((cap) => cap.id).sort();
+  if (registration.ai_services !== undefined) {
+    need(Array.isArray(registration.ai_services) && registration.ai_services.length <= 16 &&
+      (!registration.ai_services.length || registration.permissions.mode === "platform_access"));
+    const aiIds = new Set();
+    for (const service of registration.ai_services) {
+      need(plain(service) && Object.keys(service).sort().join() ===
+        "capability_ids,description,id,supported_sources,title" &&
+        typeof service.id === "string" && /^[a-z][a-z0-9_.-]{2,119}$/.test(service.id) &&
+        service.id.startsWith(manifest.module.id + ".") && !aiIds.has(service.id) &&
+        typeof service.title === "string" && service.title.length > 0 && [...service.title].length <= 200 &&
+        typeof service.description === "string" && service.description.length > 0 && [...service.description].length <= 2000 &&
+        Array.isArray(service.capability_ids) && service.capability_ids.length > 0 && service.capability_ids.length <= 64 &&
+        service.capability_ids.every((id) => ids.includes(id)) &&
+        new Set(service.capability_ids).size === service.capability_ids.length &&
+        Array.isArray(service.supported_sources) && service.supported_sources.length > 0 &&
+        service.supported_sources.every((source) => ["platform", "module"].includes(source)) &&
+        new Set(service.supported_sources).size === service.supported_sources.length);
+      aiIds.add(service.id);
+    }
+  }
   const modern = registration.registration_version === "1.1";
   if (modern) {
     need(
@@ -97,6 +122,8 @@ export function createRegistration({
           /^[0-9a-f]{64}$/.test(offer.contract_digest),
       );
       const required = ["invoke-1.1", "shared-hosts-1.0", "registration-1.0"];
+      required.push(...extraFeatures);
+      if (localRegistration.ai_services?.length) required.push("ai-services-1.0");
       if (modern)
         required.push(
           "registration-1.1",

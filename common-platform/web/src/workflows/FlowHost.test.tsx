@@ -344,6 +344,26 @@ describe('workflow host with synthetic adapter responses', () => {
     expect(mocked.post).toHaveBeenCalledTimes(1);
   });
 
+  it('accepts a slow background receipt without overlapping automatic polls or replaying commands', async () => {
+    vi.useFakeTimers();
+    record.status='queued';record.run_id='slow-run';
+    render(<FlowHost instanceId="flow-a"/>);
+    await act(async()=>{});
+    const gate=deferred<WorkflowInstance>(),original=mocked.api.getMockImplementation()!;
+    let reads=0;
+    mocked.api.mockImplementation((path:string,options?:RequestInit)=>{
+      if(path==='/flows/instances/flow-a'&&!options?.method){reads++;return gate.promise;}
+      return original(path,options);
+    });
+    await act(async()=>{await vi.advanceTimersByTimeAsync(5600);});
+    expect(reads).toBe(1);
+    record={...record,status:'completed',revision:2,projection:{...record.projection!,state:'slow-saved',revision:8}};
+    await act(async()=>{gate.resolve(copy());await gate.promise;});
+    expect(screen.getByText('业务状态 slow-saved')).toBeTruthy();
+    expect(screen.getByText('已取得后台回执，业务状态已更新')).toBeTruthy();
+    expect(mocked.post).not.toHaveBeenCalled();
+  });
+
   it.each(['queued', 'running'])('polls an independent %s business job after the platform run is already complete', async state => {
     record.status = 'completed';
     record.projection!.jobs = [{ job_id: 'business-job', state, progress: { completed: 0, total: 1 } }];

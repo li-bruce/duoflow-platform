@@ -93,6 +93,28 @@ def _redact(value: Any, tokens: list[str]) -> Any:
 
 
 class RemoteServiceManager:
+    # The module SDK returns only error.code/message. Only these fixed codes may
+    # select public diagnostic wording; supplier/module messages stay private.
+    _AI_FAILURES = {
+        "ai_provider_limited": "模块 AI 供应商请求受限或额度不足，请稍后重试并检查供应商额度。",
+        "ai_provider_auth": "模块 AI 供应商拒绝认证，请检查模块自有 API 配置。",
+        "ai_provider_failed": "模块 AI 供应商未能完成请求，请检查模型名称、参数与供应商状态。",
+        "ai_provider_unavailable": "模块 AI 供应商连接失败或超时，请检查网络、地址与超时设置。",
+        "ai_platform_rejected": "平台 AI 服务拒绝本次请求，请检查当前来源、授权、模型配置与服务状态。",
+        "ai_platform_unavailable": "模块暂时无法连接平台 AI 服务，请检查平台连接与服务状态。",
+        "ai_disabled": "该模块的 AI 服务尚未启用，请由管理员配置 AI 来源。",
+        "ai_service_disabled": "模块自有 AI 配置已禁用，请由管理员检查配置。",
+        "ai_binding_revision_changed": "AI 来源已变化，本次结果未采纳，请刷新后重新办理。",
+        "ai_config_revision_changed": "模块 AI 配置已变化，本次结果未采纳，请刷新后重新办理。",
+        "ai_platform_config_changed": "平台 AI 配置已变化，本次结果未采纳，请刷新后重新办理。",
+        "model_timeout": "平台模型请求超时，请检查模型超时设置或稍后重试。",
+        "model_rate_limited": "平台模型请求受限或额度不足，请检查供应商额度或稍后重试。",
+        "model_auth_failed": "平台模型拒绝认证，请由管理员检查平台 API 配置。",
+        "model_connection_failed": "平台模型连接失败，请检查模型地址、网络与服务状态。",
+        "model_provider_error": "平台模型供应商未能完成请求，请检查模型名称、参数与服务状态。",
+        "model_disabled": "已选择的平台模型已禁用，请由管理员检查 AI 来源。",
+        "model_not_configured": "平台模型尚未配置，请由管理员保存并选择可用模型。",
+    }
     _FIELDS = {
         "id",
         "name",
@@ -657,6 +679,24 @@ class RemoteServiceManager:
                 "远程连接或启停状态已变化，请刷新并核对当前修订后再执行。",
             )
 
+    async def _known_ai_failure(self, response):
+        """Decode a bounded selector only; never retain a remote message/body."""
+        try:
+            async with asyncio.timeout(1):
+                content = bytearray()
+                async for chunk in response.aiter_bytes(chunk_size=1024):
+                    if len(content) + len(chunk) > 4096:
+                        return None
+                    content.extend(chunk)
+                payload = json.loads(content)
+                error = payload.get("error") if isinstance(payload, dict) else None
+                code = error.get("code") if isinstance(error, dict) else None
+                if isinstance(code, str) and code in self._AI_FAILURES:
+                    return "remote_" + code, self._AI_FAILURES[code]
+        except (ValueError, UnicodeError, RecursionError, httpx.HTTPError, TimeoutError):
+            pass
+        return None
+
     async def _request(
         self,
         item,
@@ -721,6 +761,10 @@ class RemoteServiceManager:
                                 "remote_async_unsupported",
                                 "远程服务返回异步任务，本版仅支持在当前请求中完成的服务响应。",
                             )
+                        if endpoint == "invoke" and status in {429, 500, 501, 502, 503, 504}:
+                            failure = await self._known_ai_failure(response)
+                            if failure is not None:
+                                raise RemoteServiceError(*failure)
                         modern_invoke = (
                             endpoint == "invoke"
                             and isinstance(body, dict)
@@ -792,6 +836,8 @@ class RemoteServiceManager:
                                             )
                                             if isinstance(code, str) and code in known_conflicts:
                                                 conflict = known_conflicts[code]
+                                            elif isinstance(code, str) and code in self._AI_FAILURES:
+                                                conflict = ("remote_" + code, self._AI_FAILURES[code])
                                 except (
                                     ValueError,
                                     UnicodeError,
@@ -801,6 +847,23 @@ class RemoteServiceManager:
                                 ):
                                     pass
                                 raise RemoteServiceError(*conflict)
+                        if endpoint == "invoke" and status == 409:
+                            failure = await self._known_ai_failure(response)
+                            if failure is not None:
+                                raise RemoteServiceError(*failure)
+                        if endpoint.startswith("ai/services/") and status in {409, 413, 422, 503, 504}:
+                            # Fixed AI controls are configuration transport, not
+                            # invocations. Preserve safe status semantics without
+                            # retaining the module's error body or credentials.
+                            errors = {
+                                409: ("ai_module_revision_conflict", "模块 API 配置或状态已变化，请刷新后重试。"),
+                                413: ("ai_module_config_size", "模块 API 配置超过允许大小。"),
+                                422: ("ai_module_config_invalid", "模块未接受 API 配置，请检查字段和参数。"),
+                                503: ("ai_module_unavailable", "模块 AI 服务暂不可用。"),
+                                504: ("ai_module_timeout", "模块 AI 请求超时，未自动重试。"),
+                            }
+                            code, message = errors[status]
+                            raise PlatformError(code, message, status)
                         if status in {401, 403}:
                             raise RemoteServiceError(
                                 "remote_auth_failed", "远程服务拒绝认证，请检查连接凭据与服务权限。"

@@ -96,7 +96,14 @@ class AccessBridge:
             )
         }
 
-    def issue(self, actor, spec, request_id, operation):
+    def issue(self, actor, spec, request_id, operation, *, source_chain=()):
+        require(
+            isinstance(source_chain, (list, tuple)) and len(source_chain) <= 4
+            and all(isinstance(item, str) and re.fullmatch(r"[a-z][a-z0-9_.-]{2,119}", item)
+                    for item in source_chain)
+            and len(set(source_chain)) == len(source_chain),
+            "source_read_cycle", "来源读取层级无效。", 409,
+        )
         require(
             isinstance(request_id, str)
             and re.fullmatch(IDENTIFIER["pattern"], request_id) is not None,
@@ -144,6 +151,7 @@ class AccessBridge:
             "iat": started,
             "exp": started + self.ttl_seconds,
             "nonce": secrets.token_hex(12),
+            "source_chain": list(source_chain),
         }
         encoded = _b64(
             json.dumps(claims, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()

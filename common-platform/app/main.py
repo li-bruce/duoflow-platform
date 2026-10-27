@@ -103,7 +103,11 @@ def create_app(data_dir: Path | None = None, start_worker=True, gateway=None, re
     engine, sessions = create_database(data_dir)
     seed_users(sessions, data_dir=data_dir)
     gateway = gateway or ModelGateway(data_dir)
-    remote_services = remote_services or RemoteServiceManager(data_dir)
+    if remote_services is None:
+        remote_services = RemoteServiceManager(data_dir)
+        from .monitor_client import AggregateMonitorClient
+
+        remote_services._monitor = AggregateMonitorClient(data_dir, remote_services)
     runtime = Runtime(ROOT, sessions, gateway, remote_services, data_dir=data_dir)
     agent_engine = AgentEngine(runtime, data_dir)
     conversation = ConversationService(runtime, agent_engine=agent_engine)

@@ -20,6 +20,7 @@ DOCS = ('通用框架架构与代码地图.md', '模块开发与调试说明书.
 HANDBOOK_IDS = ('architecture-core', 'module-debug', 'migration')
 TREES = {
     'app': {'.py'}, 'contracts': {'.json', '.md'},
+    'monitoring_service': {'.py'},
     'templates': {'.py', '.json', '.md', '.ps1', '.ts', '.tsx', '.mjs', '.css', '.txt'},
     'web/src': {'.ts', '.tsx', '.css'},
     'extensions/framework-lab': {'.py', '.json', '.md'},
@@ -44,6 +45,8 @@ FILES = (
     'tests/test_ai_services.py', 'docs/模块AI服务与配置.md',
     'tests/test_access_bridge.py', 'tests/test_interactions.py', 'tests/test_remote_services.py',
     'tests/test_service_monitor.py', 'tests/test_remote_config_cache.py', 'tests/test_module_kit.py',
+    'tests/test_independent_monitor.py', 'scripts/monitor_service.py', 'scripts/build_monitor_contract.py',
+    'docs/独立监控服务设计.md',
     'tests/test_portable_isolation.py',
     'tests/test_composition_boundaries.py', 'docs/模块公开与业务组织分析.md',
     'tests/registration_helpers.py', 'tests/test_registration_admission.py',

@@ -1,5 +1,7 @@
 # 通用框架架构与代码地图
 
+技术监控由独立的 `monitoring_service/` 进程执行健康探测、接收实例负载并聚合，`app/monitor_client.py` 在主API内只读取5秒汇总；独立SQLite不使用业务数据库。监控故障显示未知，不代替业务授权或正式状态。部署和协议详见 `docs/独立监控服务设计.md`、`contracts/monitoring/v1/`。
+
 总框架负责微服务管理、统一认证和公共功能，并承担不同模块业务的连接与组织。各模块通过模块框架公开业务行为、数据、接口和共用界面，保留自己的正式记录与业务规则。单模块和组合业务都应同时有页面与对话两种呈现；当前已具备单模块双端、统一调用及明确后续动作，完整跨模块组合执行尚需补齐。
 
 本文描述当前源码实现。配套阅读：[模块开发与调试说明书](模块开发与调试说明书.md)、[迁移与 AI 交接指南](框架迁移与AI交接指南.md)。[打开调试台](/#devtools)。
@@ -107,7 +109,8 @@
 | `app/access_control.py`、`access_routes.py`、`access_bridge.py` | Casbin 范围授权、管理接口、远程判定桥接 | 主框架维护者 |
 | `app/registry.py`、`module_routes.py` | 本地能力注册、模块启停和目录 | 主框架维护者 |
 | `app/runtime.py` | 能力调用、幂等、任务与结果 | 主框架维护者 |
-| `app/remote_services.py`、`service_monitor.py`、`remote_routes.py` | 远程发现、连接与健康监测 | 主框架维护者 |
+| `app/remote_services.py`、`monitor_client.py`、`remote_routes.py` | 远程发现、连接管理与独立监控汇总读取 | 主框架维护者 |
+| `monitoring_service/`、`app/service_monitor.py` | 独立进程中的健康探测、负载报告与最新值聚合 | 监控服务维护者 |
 | `app/workflows.py`、`workflow_routes.py`、`workflow_transport.py` | 多步骤宿主、个人实例、对象适配和传输 | 主框架维护者 |
 | `app/interactions.py`、`interaction_routes.py` | 单组件实例和动作绑定 | 主框架维护者 |
 | `app/conversation.py`、`conversation_routes.py`、`agent_engine.py` | 对话记录、分支及技能引导 | 主框架维护者 |

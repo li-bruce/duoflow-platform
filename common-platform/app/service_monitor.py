@@ -90,6 +90,11 @@ class ServiceMonitor:
             if value is not None and value["revision"] == previous_revision:
                 self._states[service_id] = {**value, "revision": revision}
 
+    def forget(self, service_id):
+        """A removed target must not retain an unbounded historical state."""
+        with self._lock:
+            self._states.pop(service_id, None)
+
     async def _probe(self, service_id, revision):
         async with self._semaphore:
             return await self.manager._probe_health(service_id, expected_revision=revision)

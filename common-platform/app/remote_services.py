@@ -350,7 +350,30 @@ class RemoteServiceManager:
 
     def list_services(self):
         with self._lock:
-            return {"items": [self._public(item) for item in self._read()["services"]]}
+            result = {"items": [self._public(item) for item in self._read()["services"]]}
+            if hasattr(self._monitor, "summary"):
+                result["monitoring"] = self._monitor.summary()
+            return result
+
+    def monitor_targets(self):
+        """Private control-plane export only; never returned to browsers."""
+        with self._lock:
+            state = self._read()
+            if hasattr(self, "_monitor_export_targets") and self._monitor_export_key == self._read_digest:
+                return copy.deepcopy(self._monitor_export_targets)
+            targets = []
+            cacheable = True
+            for item in sorted(state["services"], key=lambda row: row["id"]):
+                try:
+                    token = self._tokens.decrypt(item.get("secret"))
+                except RemoteServiceError:
+                    token = ""  # This target fails independently; other probes continue.
+                    cacheable = False
+                targets.append({"id": item["id"], "revision": item["revision"],
+                                "base_url": item["base_url"], "token": token})
+            self._monitor_export_key = self._read_digest if cacheable else b""
+            self._monitor_export_targets = targets
+            return copy.deepcopy(targets)
 
     def _monitor_targets(self):
         with self._lock:

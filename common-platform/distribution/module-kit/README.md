@@ -2,6 +2,8 @@
 
 版本 **v0.02**。将业务要求整理为可在页面与对话中使用、可参与平台组合的模块，提供协议、Python/Node SDK、模板、独立检查工具和 `duoflow-module` Skill。
 
+本地后续候选提供Node/Python telemetry SDK，直接向独立监控服务报告实例负载，支持每服务凭据、短超时与故障隔离。旧健康接口兼容，监控不代替业务状态。见[设计与接入](docs/独立监控服务设计.md)及`contracts/monitoring/v1/`；发布标签保持原样。
+
 - [功能介绍页](docs/index.html) · [独立交互演示](docs/demo.html)
 - [功能与支持范围](docs/FEATURES.md) · [源码阅读](docs/ARCHITECTURE.md)
 - [开发与使用](docs/DEVELOPMENT.md) · [业务建模和持续同步](docs/OBSERVER.md)

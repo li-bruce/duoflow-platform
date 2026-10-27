@@ -1,5 +1,11 @@
 # 发布记录
 
+## 本地后续候选：独立技术监控报告1.0
+
+- Node/Python可选telemetry SDK直达独立服务，使用独立报告令牌；失败不影响业务。
+- Node流程模板可从私有配置显式启用真实进程采样及HTTP计数，缺失队列指标保持未知。
+- 携带实际Schema和说明，Python锁定psutil依赖；不将业务观察或界面presence混作技术监控。
+
 ## 本地后续候选：模块AI服务1.0
 
 - registration.ai_services正式声明AI服务位置及能力关联，不放入供应商凭据。

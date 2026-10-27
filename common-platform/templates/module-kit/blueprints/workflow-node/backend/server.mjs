@@ -5,6 +5,7 @@ import { createModuleServer, requireThat } from "../sdk/node/runtime.mjs";
 import { createAccessClient } from "../sdk/node/access-client.mjs";
 import { createObservationClient } from "../sdk/node/observation.mjs";
 import { AIServiceManager } from "../sdk/node/ai-service.mjs";
+import { createTelemetryReporter } from "../sdk/node/telemetry.mjs";
 import { createBusiness } from "./business.mjs";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -25,6 +26,7 @@ export function createService({
   fetchImpl,
   observationUrl,
   aiManager = null,
+  telemetryConfig = null,
 }) {
   const business = createBusiness({
     filename,
@@ -66,11 +68,27 @@ export function createService({
       observationClient: observer,
       aiManager,
     });
+    const counters = {inflight_requests:0, requests_total:0, errors_total:0};
+    const telemetry = telemetryConfig ? createTelemetryReporter({
+      ...telemetryConfig, metrics:()=>({...counters}),
+    }) : null;
+    if (telemetry) {
+      server.on('request', (_request, response)=>{
+        counters.requests_total++; counters.inflight_requests++;
+        let counted=false;
+        const finish=()=>{ if(counted)return; counted=true; counters.inflight_requests--;
+          if(response.statusCode>=500 || !response.writableFinished)counters.errors_total++; };
+        response.once('finish',finish); response.once('close',finish);
+      });
+      server.once('listening',()=>telemetry.start());
+      server.once('close',()=>void telemetry.stop());
+    }
     return {
       server,
       close: async () => {
         if (server.listening)
           await new Promise((resolve) => server.close(resolve));
+        await telemetry?.stop();
         await business.close();
         await observer?.flush();
       },
@@ -101,6 +119,11 @@ if (
     observationUrl: process.env.PLATFORM_OBSERVATION_URL,
     filename: path.join(directory, "records.sqlite"),
     projects,
+    telemetryConfig: process.env.DUOFLOW_MONITOR_CONFIG_FILE ? (()=>{
+      const configuration=JSON.parse(readFileSync(process.env.DUOFLOW_MONITOR_CONFIG_FILE,'utf8'));
+      return {url:configuration.url, token:configuration.token, intervalSeconds:configuration.interval_seconds ?? 15,
+        ...(configuration.instance_id ? {instanceId:configuration.instance_id} : {})};
+    })() : null,
     aiManager: registration.ai_services?.length ? new AIServiceManager({
       services: registration.ai_services,
       dataDir: path.join(directory, "ai"),

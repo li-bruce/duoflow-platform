@@ -45,6 +45,14 @@ def create_remote_router(manager, runtime, require_admin, check_csrf):
             runtime.registry = runtime.build_remote_registry(manager.enabled_bindings())
             return result
 
+    @router.get("/monitoring/summary")
+    def monitoring_summary(actor=Depends(require_admin)):
+        monitor = manager._monitor
+        if hasattr(monitor, "summary"):
+            return monitor.summary()
+        return {"mode": "independent", "state": "unconfigured", "summary": None, "items": [],
+                "message": "尚未配置独立监控服务。", "last_received_at": None, "interval_seconds": 5}
+
     @router.post("/{service_id}/discover", dependencies=[Depends(check_csrf)])
     async def discover(service_id: str, actor=Depends(require_admin)):
         # Network discovery must not hold the invocation lock. The manager pins
@@ -91,7 +99,9 @@ def create_remote_router(manager, runtime, require_admin, check_csrf):
 
 def remote_error_response(exc: RemoteServiceError):
     code = exc.code
-    if code in ("remote_config_corrupt", "remote_config_write_failed", "remote_secret_unavailable"):
+    if code == "remote_monitor_unavailable":
+        status = 503
+    elif code in ("remote_config_corrupt", "remote_config_write_failed", "remote_secret_unavailable"):
         status = 500
     elif code == "remote_revision_required":
         status = 422

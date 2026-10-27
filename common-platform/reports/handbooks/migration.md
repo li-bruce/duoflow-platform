@@ -1,5 +1,7 @@
 # 框架迁移与 AI 交接指南
 
+主框架现随包提供独立监控服务。`scripts/start.ps1`会为所选平台数据目录准备或复用独立进程，默认监控端口8032，可用`-MonitorPort`和`-MonitorDataDirectory`指定。`scripts/stop.ps1`只停止主API；监控用`python scripts/monitor_service.py stop --data-directory <监控目录>`单独核验身份并停止。两个数据目录、凭据与备份分别处理，不将旧实例配置用于新实例。详见 `docs/独立监控服务设计.md`。
+
 ## 本独立项目的维护入口
 
 本次迁入本对话自动创建的项目根目录，根 README.md 和 AGENTS.md 是人和 AI 的入口，根目录的 .git 维护整个 common-platform 子目录，不另建嵌套仓库。必须保留 common-platform 层，说明书生成以其父目录解析受控来源。work/ 放临时检查、缓存、日志和隔离测试，outputs/ 放验收记录与截图。

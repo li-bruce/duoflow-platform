@@ -4,6 +4,7 @@
 <link rel="stylesheet" href="../handbook-assets/handbook.css"><script src="../handbook-assets/handbook.js" defer></script></head>
 <body><header class="topbar"><a href="index.html" class="brand">平台使用说明</a><nav aria-label="常用入口"><a href="/#business">我的业务</a><a href="/#chat">对话工作台</a><a href="/reports/">其他报告</a></nav></header>
 <div class="layout"><aside class="sidebar"><nav aria-label="说明书列表"><p class="nav-label">说明书</p><a aria-current="page" href="architecture-core.html">通用框架架构与代码地图</a><a href="module-debug.html">模块开发与调试说明书</a><a href="migration.html">框架迁移与AI交接指南</a></nav><nav class="toc" aria-label="本页目录"><p class="nav-label">本页目录</p><a class="level-1" href="#通用框架架构与代码地图">通用框架架构与代码地图</a><a class="level-2" href="#先用一个例子理解">先用一个例子理解</a><a class="level-2" href="#总体结构">总体结构</a><a class="level-2" href="#三层分别负责什么">三层分别负责什么</a><a class="level-2" href="#前端组件-后端能力-业务流程如何连接">前端组件、后端能力、业务流程如何连接</a><a class="level-2" href="#必须分清的三种状态">必须分清的三种状态</a><a class="level-2" href="#一次动作如何走完">一次动作如何走完</a><a class="level-2" href="#对话与智能体的位置">对话与智能体的位置</a><a class="level-2" href="#权限如何保持通用">权限如何保持通用</a><a class="level-2" href="#代码地图-从需求找到文件">代码地图：从需求找到文件</a><a class="level-2" href="#通用源码与项目内容如何分开">通用源码与项目内容如何分开</a><a class="level-2" href="#当前实现与扩展边界">当前实现与扩展边界</a></nav></aside><main id="main-content"><div class="document-meta"><span>框架维护者、模块开发者与开发 AI</span><a href="architecture-core.md" download>下载 Markdown 原文</a></div><div class="tools" hidden><label for="doc-search">查找本页内容</label><input id="doc-search" type="search" placeholder="例如：登录、对话、测试" autocomplete="off"><button type="button" id="clear-search">清空</button><button type="button" id="expand-all">展开全部</button><button type="button" id="collapse-all">折叠章节</button><span id="search-status" role="status" aria-live="polite"></span></div><noscript><p>已展示完整正文；启用 JavaScript 后可搜索和折叠章节。</p></noscript><article id="doc-content"><h1 id="通用框架架构与代码地图">通用框架架构与代码地图</h1>
+<p>技术监控由独立的 <code>monitoring_service/</code> 进程执行健康探测、接收实例负载并聚合，<code>app/monitor_client.py</code> 在主API内只读取5秒汇总；独立SQLite不使用业务数据库。监控故障显示未知，不代替业务授权或正式状态。部署和协议详见 <code>docs/独立监控服务设计.md</code>、<code>contracts/monitoring/v1/</code>。</p>
 <p>总框架负责微服务管理、统一认证和公共功能，并承担不同模块业务的连接与组织。各模块通过模块框架公开业务行为、数据、接口和共用界面，保留自己的正式记录与业务规则。单模块和组合业务都应同时有页面与对话两种呈现；当前已具备单模块双端、统一调用及明确后续动作，完整跨模块组合执行尚需补齐。</p>
 <p>本文描述当前源码实现。配套阅读：<a href="module-debug.html">模块开发与调试说明书</a>、<a href="migration.html">迁移与 AI 交接指南</a>。<a href="/#devtools">打开调试台</a>。</p>
 <h2 id="先用一个例子理解">先用一个例子理解</h2>
@@ -178,9 +179,14 @@
 <td>主框架维护者</td>
 </tr>
 <tr>
-<td><code>app/remote_services.py</code>、<code>service_monitor.py</code>、<code>remote_routes.py</code></td>
-<td>远程发现、连接与健康监测</td>
+<td><code>app/remote_services.py</code>、<code>monitor_client.py</code>、<code>remote_routes.py</code></td>
+<td>远程发现、连接管理与独立监控汇总读取</td>
 <td>主框架维护者</td>
+</tr>
+<tr>
+<td><code>monitoring_service/</code>、<code>app/service_monitor.py</code></td>
+<td>独立进程中的健康探测、负载报告与最新值聚合</td>
+<td>监控服务维护者</td>
 </tr>
 <tr>
 <td><code>app/workflows.py</code>、<code>workflow_routes.py</code>、<code>workflow_transport.py</code></td>

@@ -1,0 +1,148 @@
+{
+  "$defs": {
+    "Metrics": {
+      "additionalProperties": false,
+      "properties": {
+        "cpu_percent": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cpu Percent"
+        },
+        "rss_bytes": {
+          "anyOf": [
+            {
+              "maximum": 1152921504606846976,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rss Bytes"
+        },
+        "inflight_requests": {
+          "anyOf": [
+            {
+              "maximum": 1000000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Inflight Requests"
+        },
+        "queue_depth": {
+          "anyOf": [
+            {
+              "maximum": 1000000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Queue Depth"
+        },
+        "requests_total": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740992,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requests Total"
+        },
+        "errors_total": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740992,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Errors Total"
+        }
+      },
+      "title": "Metrics",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "monitor_version": {
+      "const": "1.0",
+      "title": "Monitor Version",
+      "type": "string"
+    },
+    "instance_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$",
+      "title": "Instance Id",
+      "type": "string"
+    },
+    "boot_id": {
+      "pattern": "^[a-f0-9]{32}$",
+      "title": "Boot Id",
+      "type": "string"
+    },
+    "sequence": {
+      "maximum": 9007199254740992,
+      "minimum": 1,
+      "title": "Sequence",
+      "type": "integer"
+    },
+    "status": {
+      "enum": [
+        "ready",
+        "degraded",
+        "draining"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "uptime_seconds": {
+      "maximum": 10000000000,
+      "minimum": 0,
+      "title": "Uptime Seconds",
+      "type": "number"
+    },
+    "metrics": {
+      "$ref": "#/$defs/Metrics"
+    }
+  },
+  "required": [
+    "monitor_version",
+    "instance_id",
+    "boot_id",
+    "sequence",
+    "status",
+    "uptime_seconds",
+    "metrics"
+  ],
+  "title": "Report",
+  "type": "object"
+}

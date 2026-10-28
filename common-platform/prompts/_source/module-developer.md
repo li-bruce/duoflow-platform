@@ -234,3 +234,15 @@ Python local 既可以提供无状态查询，也可以持有业务状态。受�
 优先用 framework-lab 中立模块演练：创建→提交→退回→修改→重提→完成，页面/对话共用步骤组件和对象。它是本人调试样例，不是允许自审的真实审批规则。Node workflow-node 模板也从共享flow状态声明执行转移；其他模块可用自有业务状态引擎，仍返回统一投影。
 
 架构与迁移入口见 docs/通用框架架构与代码地图.md、docs/模块开发与调试说明书.md、docs/框架迁移与AI交接指南.md。scripts/export_framework.py 从正向源码清单导出全新通用包，仅安装 framework-lab，重建提示词与说明书，不复制业务数据/凭据/远程连接/行业演示账号/依赖/构建物/Git历史。新包仍需安装锁定依赖、构建并实际验收；导出摘要不是运行验收。
+
+## 并行业务状态协同 1.0
+
+四个业务模块可以同时办理，模块各自执行正式状态机。独立 `coordination_service` 汇集状态事件、管理公开申请和订阅、持久化投递与回执；主框架只管理控制面并读取汇总。它与技术健康监控、运行观察及顺序 composition 分别承担职责。
+
+模块注册可选声明 `coordination={version,machines,emits,accepts}`；machines对应本模块业务图、数据对象和状态集合，accepts说明愿意接收的来源事件与notify/sync处理方式。实际机构/项目订阅由平台管理员配置。协议、输入限额及完整字段见 `contracts/coordination/v1/`，说明见 `docs/并行业务状态协同.md`。
+
+Node/Python SDK在 `templates/module-kit/sdk/*/coordination.*`，提供同库transactional outbox/inbox：业务事务内enqueue，提交后relay，pull后consume把处理与inbox一起提交，再ACK。workflow-node蓝图可通过 `DUOFLOW_COORDINATION_CONFIG_FILE` 接线，范围来自可信项目仓库；空声明保持原用法。自动业务处理应显式注入模块处理函数，继续检查对象修订和当前权限。
+
+公开审批采用publication.requested→平台管理员决定→来源模块核对申请修订并实际公开→resource.published→订阅扇出。审批绑定申请对象与版本；普通审核通过与资源公开由业务分别建模。消息携带状态元数据与对象引用，正文通过来源授权接口读取。notify记录通知，sync刷新索引/失效标记或由模块显式实现同步动作。
+
+接收方按投递ID幂等处理，租约过期可重新领取；相同事件ID对应相同内容，同对象版本不倒退。外部数据库需实现原生事务适配，外部副作用继续使用目标幂等接口。示例及独立进程验收是框架合成服务场景，业务模块采用时接入自己的事务与权限判断。

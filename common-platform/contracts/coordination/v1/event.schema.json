@@ -1,0 +1,141 @@
+{
+  "$defs": {
+    "ObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_type": {
+          "maxLength": 160,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Object Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_type",
+        "object_id"
+      ],
+      "title": "ObjectRef",
+      "type": "object"
+    },
+    "Scope": {
+      "additionalProperties": false,
+      "properties": {
+        "organization_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "project_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Project Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "organization_id",
+        "project_id"
+      ],
+      "title": "Scope",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "approval_ref": {
+      "anyOf": [
+        {
+          "maxLength": 160,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Approval Ref"
+    },
+    "event_id": {
+      "maxLength": 160,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "title": "Event Id",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "state.changed",
+        "publication.requested",
+        "resource.published",
+        "resource.withdrawn"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "machine_id": {
+      "maxLength": 160,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.-]+$",
+      "title": "Machine Id",
+      "type": "string"
+    },
+    "module_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.-]+$",
+      "title": "Module Id",
+      "type": "string"
+    },
+    "object_ref": {
+      "$ref": "#/$defs/ObjectRef"
+    },
+    "revision": {
+      "maximum": 9007199254740991,
+      "minimum": 1,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "scope": {
+      "$ref": "#/$defs/Scope"
+    },
+    "state": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.-]+$",
+      "title": "State",
+      "type": "string"
+    },
+    "version": {
+      "const": "1.0",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "version",
+    "event_id",
+    "module_id",
+    "kind",
+    "machine_id",
+    "object_ref",
+    "state",
+    "revision",
+    "scope"
+  ],
+  "title": "Event",
+  "type": "object"
+}

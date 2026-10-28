@@ -1,0 +1,85 @@
+{
+  "$defs": {
+    "Scope": {
+      "additionalProperties": false,
+      "properties": {
+        "organization_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "project_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Project Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "organization_id",
+        "project_id"
+      ],
+      "title": "Scope",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.-]+$",
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "state.changed",
+        "publication.requested",
+        "resource.published",
+        "resource.withdrawn"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "notify",
+        "sync"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/Scope"
+    },
+    "source_module": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.-]+$",
+      "title": "Source Module",
+      "type": "string"
+    },
+    "target_module": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.-]+$",
+      "title": "Target Module",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "source_module",
+    "target_module",
+    "kind",
+    "scope",
+    "mode"
+  ],
+  "title": "Subscription",
+  "type": "object"
+}

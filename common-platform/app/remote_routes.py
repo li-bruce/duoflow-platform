@@ -22,6 +22,11 @@ def create_remote_router(manager, runtime, require_admin, check_csrf):
             current = refresh_actor(db, actor, require_unchanged=True)
         require(can_manage_platform(current), "forbidden", "管理服务连接需要平台管理权限。", 403)
 
+    async def reconcile_coordination(request):
+        coordinator = getattr(request.app.state, "coordination", None)
+        if coordinator is not None:
+            await coordinator.reconcile()
+
     @router.get("")
     def connections(actor=Depends(require_admin)):
         return manager.list_services()
@@ -43,7 +48,8 @@ def create_remote_router(manager, runtime, require_admin, check_csrf):
             )
             result = manager.save_connection(payload, require_revision=True)
             runtime.registry = runtime.build_remote_registry(manager.enabled_bindings())
-            return result
+        await reconcile_coordination(request)
+        return result
 
     @router.get("/monitoring/summary")
     def monitoring_summary(actor=Depends(require_admin)):
@@ -54,12 +60,13 @@ def create_remote_router(manager, runtime, require_admin, check_csrf):
                 "message": "尚未配置独立监控服务。", "last_received_at": None, "interval_seconds": 5}
 
     @router.post("/{service_id}/discover", dependencies=[Depends(check_csrf)])
-    async def discover(service_id: str, actor=Depends(require_admin)):
+    async def discover(service_id: str, request: Request, actor=Depends(require_admin)):
         # Network discovery must not hold the invocation lock. The manager pins
         # and rechecks the connection revision while it waits for the response.
         result = await manager.discover(service_id, before_commit=lambda: current_admin(actor))
         async with runtime.lock:
             runtime.registry = runtime.build_remote_registry(manager.enabled_bindings())
+        await reconcile_coordination(request)
         return result
 
     @router.post("/{service_id}/health", dependencies=[Depends(check_csrf)])
@@ -69,7 +76,7 @@ def create_remote_router(manager, runtime, require_admin, check_csrf):
         return result
 
     @router.post("/{service_id}/admission", dependencies=[Depends(check_csrf)])
-    async def admission(service_id: str, body: EnableInput, actor=Depends(require_admin)):
+    async def admission(service_id: str, body: EnableInput, request: Request, actor=Depends(require_admin)):
         # The callback executes synchronously after network work; it only reads
         # trusted local definitions. Publication performs the same checks again.
         result = await manager.admit(
@@ -80,19 +87,24 @@ def create_remote_router(manager, runtime, require_admin, check_csrf):
         )
         async with runtime.lock:
             runtime.registry = runtime.build_remote_registry(manager.enabled_bindings())
+        await reconcile_coordination(request)
         return result
 
     @router.post("/{service_id}/enable", dependencies=[Depends(check_csrf)])
-    async def enable(service_id: str, body: EnableInput, actor=Depends(require_admin)):
+    async def enable(service_id: str, body: EnableInput, request: Request, actor=Depends(require_admin)):
         async with runtime.lock:
             current_admin(actor)
-            return runtime.set_remote_publication(service_id, True, body.expected_revision)
+            result=runtime.set_remote_publication(service_id, True, body.expected_revision)
+        await reconcile_coordination(request)
+        return result
 
     @router.post("/{service_id}/disable", dependencies=[Depends(check_csrf)])
-    async def disable(service_id: str, body: EnableInput, actor=Depends(require_admin)):
+    async def disable(service_id: str, body: EnableInput, request: Request, actor=Depends(require_admin)):
         async with runtime.lock:
             current_admin(actor)
-            return runtime.set_remote_publication(service_id, False, body.expected_revision)
+            result=runtime.set_remote_publication(service_id, False, body.expected_revision)
+        await reconcile_coordination(request)
+        return result
 
     return router
 

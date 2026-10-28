@@ -10,6 +10,7 @@
 | access / workflow / interaction | 1.0 |
 | flow_exports / runtime_observation | 1.0 / 1.0 |
 | composition | 1.0；平台提供顺序执行，套件提供公开契约 |
+| coordination | 1.0；独立中心、并行事件协同、事务 Outbox/Inbox |
 | module_graph / Observer 映射 | 1.0 / 2（旧包仍可使用映射 1） |
 | business-observer | business-observer.lock.json 的精确提交 |
 
@@ -21,5 +22,7 @@
 本地后续候选新增可选 `ai-services-1.0` 与 `registration.ai_services`。声明AI的模块使用同批Python/Node AIServiceManager、模块私有加密配置和配置控制接口；接入后按平台显式保存的来源选择平台broker或模块自身API，无自动回退。旧无AI声明模块保持兼容。协议详见 `contracts/ai/v1/`，操作与限制见[模块AI服务与配置](docs/模块AI服务与配置.md)。该候选尚未改写已发布v0.02标签。
 
 `contracts/` 随本仓库提供，静态校验器来自平台相同实现，来源散列见 VALIDATOR-SOURCES.json。升级时统一复核协议、SDK、模板、映射和负例测试；不要独立刷新散列来掩盖接口差异。目标平台完成七项验收才可发布，离线检查无法确认实际安装和真实授权。
+
+并行协同使用可选 `coordination-1.0` 特征和 `registration.coordination` 声明。需要它的模块在双向握手时声明依赖；发送事件与本地业务事务共同提交，消费处理与 Inbox 共同提交。公开审批绑定来源对象修订，来源模块提交公开状态后才发出 `resource.published`。接线与完整示例见 [并行业务状态协同](docs/并行业务状态协同.md)。无协同声明的模块继续独立使用，既有 v0.02 标签保持原样。
 
 Python、JS/TS、React、Vue 源码映射使用固定 Observer 的相应适配器；其解析依赖需要独立安装。状态与动态调用仍需实际采集。原生 bo.fsm/1 是平面子集；完整层级/并行业务模型保留在模块中，平台状态图描述当前协议支持的公开部分。套件使用 Observer 对应的 jsonschema 4.25.1，平台实现使用其锁定版本；两侧公共 Schema 和行为通过配套测试核对。

@@ -64,3 +64,5 @@ v0.02 开发中的模块套件已加入 module-graph 1.0、flow-exports 1.0、ru
 # 注册验收要求
 
 新远程模块交付 registration 1.1 声明与握手，旧服务保留 1.0 兼容。使用最新模板的 registration.json 和实际处理函数表，按 docs/模块框架说明.md 完成适配。离线 check 后，在平台发现、安装所需呈现、注册权限，再运行七项接入检查；全部通过后才能发布。不要把发现或健康成功当作接入完成。实际用户授权和完整业务验收仍需另外完成。
+
+如果多个模块需要并行协同，在registration中声明可选coordination，说明本模块状态机、发布事件和愿意接收的来源变化。把业务保存与SDK.enqueue放入同一事务，再由模块提交后发送；接收处理和inbox一起提交后确认。公开申请示例、Node/Python SDK和运行步骤见 `templates/module-kit/examples/coordination/`、`contracts/coordination/v1/`、`docs/并行业务状态协同.md`。具体业务仍由各自模块的状态机执行，平台按订阅汇集分发。

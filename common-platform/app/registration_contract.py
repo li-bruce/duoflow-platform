@@ -18,6 +18,7 @@ FEATURES = ["invoke-1.0", "invoke-1.1", "access-1.0", "shared-hosts-1.0", "regis
 FEATURES += ["registration-1.1", "module-graph-1.0", "flow-exports-1.0", "runtime-observation-1.0"]
 FEATURES += ["source-reads-1.0"]
 FEATURES += ["ai-services-1.0"]
+FEATURES += ["coordination-1.0"]
 CHECKS = [
     ("manifest", "能力声明与输入输出"),
     ("registration", "数据、流程与权限声明"),
@@ -101,6 +102,9 @@ def validate_registration(document, manifest):
     )
     Draft202012Validator(schema).validate(document)
     validate_ai_services(document, manifest)
+    from .coordination_contract import validate_coordination
+
+    validate_coordination(document)
     if document["workflow_operations"] != sorted(document["workflow_operations"]):
         raise ValueError("registration_interfaces")
     if (document["module_id"], document["module_version"]) != (

@@ -27,6 +27,7 @@ QUICK_PROMPT_PATH = Path("prompts/模块开发快速提示词.md")
 SOURCE_TREES = {
     "app": {".py"},
     "monitoring_service": {".py"},
+    "coordination_service": {".py"},
     "web/src": {".ts", ".tsx", ".css"},
     "templates": {".py", ".json", ".md", ".ps1", ".ts", ".tsx", ".mjs"},
     "components": {".json", ".ts", ".tsx", ".css", ".md"},
@@ -46,6 +47,7 @@ SOURCE_FILES = (
     "scripts/module_graph_template.py",
     "scripts/flow_exports_template.py",
     "scripts/monitor_service.py", "scripts/build_monitor_contract.py",
+    "scripts/coordination_service.py", "scripts/build_coordination_contract.py",
 )
 EXCLUDED_PARTS = {"data", "logs", "node_modules", "__pycache__", ".venv", ".git", "dist"}
 

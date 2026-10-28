@@ -1901,5 +1901,11 @@
     "version": "1.0",
     "transport": "callback",
     "authentication": "call_ticket"
+  },
+  "coordination": {
+    "version": "1.0",
+    "machines": [],
+    "emits": [],
+    "accepts": []
   }
 }

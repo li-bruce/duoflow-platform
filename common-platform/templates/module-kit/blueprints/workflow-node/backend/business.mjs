@@ -1,8 +1,10 @@
 /** Business changes belong here. SDK owns transport/transactions; the platform owns identity and grants. */
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 import { Store } from "../sdk/node/store.mjs";
 import { compile, requireThat, fail } from "../sdk/node/runtime.mjs";
+import { initializeCoordination } from "../sdk/node/coordination.mjs";
 
 export const MODULE_ID = "__MODULE_ID__";
 export const OBJECT_TYPE = `${MODULE_ID}.record`;
@@ -76,7 +78,7 @@ const ordinaryDenials = new Set([
   "separation_of_duties",
   "fact_condition_failed",
 ]);
-export function createBusiness({ filename, projects, decide, ai = null }) {
+export function createBusiness({ filename, projects, decide, ai = null, coordination = null }) {
   // Optional injected AIServiceManager. The neutral workflow below has no AI
   // action; a real module explicitly declares and calls its own AI capability.
   requireThat(
@@ -91,11 +93,75 @@ export function createBusiness({ filename, projects, decide, ai = null }) {
   const repository = new Map(
     projects.map((item) => [item.project_id, Object.freeze({ ...item })]),
   );
+  // The optional client shares this exact business database. Empty coordination
+  // declarations leave the reference workflow unchanged and create no outbox.
+  const coordinatedMachine = coordination?.declaration?.machines.find(
+    (machine) => machine.id === stateMachine.id && machine.object_types.includes(OBJECT_TYPE),
+  );
+  if (coordination) {
+    requireThat(coordination.client?.moduleId === MODULE_ID &&
+      (!coordination.handler || typeof coordination.handler === "function"),
+      "coordination_config", "业务协同配置与当前模块不匹配。", 500);
+    requireThat(typeof filename === "string" && filename.length > 0 && filename !== ":memory:",
+      "coordination_database", "业务协同使用当前业务数据库文件。", 500);
+    requireThat(!coordinatedMachine || coordinatedMachine.public_states.length === 0,
+      "coordination_publication_hook", "公开业务请接入独立的申请与批准处理器。", 500);
+  }
   const store = new Store(filename);
   store.db.exec(`CREATE TABLE IF NOT EXISTS records(
     id TEXT PRIMARY KEY, project_id TEXT NOT NULL, organization_id TEXT NOT NULL, author_id TEXT NOT NULL,
     title TEXT NOT NULL, body TEXT NOT NULL, state TEXT NOT NULL, revision INTEGER NOT NULL,
     reviewer_id TEXT, review_note TEXT, updated_at TEXT NOT NULL);`);
+  if (coordination) initializeCoordination(store.db);
+  // A second connection to the SAME WAL database separates HTTP scheduling from
+  // the ordinary business queue. It never creates a second business database.
+  // A writer already held by a business request wins: the relay fails fast and
+  // leaves durable pending messages for a later attempt.
+  const coordinationDb = coordination ? new DatabaseSync(filename) : null;
+  if (coordinationDb) coordinationDb.exec("PRAGMA busy_timeout=0;");
+  const emitsState = coordinatedMachine && coordination.declaration.emits.includes("state.changed");
+  let pumpTimer = null, activePump = null, coordinationStopped = false;
+  function pumpCoordination() {
+    if (!coordination || coordinationStopped) return Promise.resolve({ enabled: false });
+    if (activePump) return activePump;
+    activePump = (async () => {
+      const result = { enabled: true, relay: await coordination.client.relay(coordinationDb), processed: 0, failed: 0 };
+      // A module only claims messages after it provides a concrete business
+      // handler. Merely advertising an acceptance never runs implicit effects.
+      if (coordination.handler) {
+        for (const delivery of await coordination.client.pull()) {
+          const event = delivery.event;
+          const declared = (event.module_id === MODULE_ID &&
+            coordination.declaration.emits.includes("publication.requested") &&
+            ["publication.approved", "publication.rejected"].includes(event.kind) && delivery.mode === "sync") ||
+            coordination.declaration.accepts.some((accept) => accept.source_module === event.module_id &&
+              accept.kind === event.kind && accept.mode === delivery.mode);
+          requireThat(declared, "coordination_subscription", "消息与当前模块的接收声明不匹配。", 422);
+          try {
+            const consumed = await coordination.client.consume(coordinationDb, delivery, coordination.handler);
+            if (consumed.acknowledged) result.processed++; else result.failed++;
+          } catch { result.failed++; }
+        }
+        result.followup_relay = await coordination.client.relay(coordinationDb);
+      }
+      return result;
+    })().finally(() => { activePump = null; });
+    return activePump;
+  }
+  function startCoordination() {
+    if (!coordination || coordinationStopped || pumpTimer) return;
+    const intervalSeconds = coordination.intervalSeconds ?? 15;
+    requireThat(Number.isFinite(intervalSeconds) && intervalSeconds >= 1 && intervalSeconds <= 300,
+      "coordination_config", "协同收发周期无效。", 500);
+    pumpTimer = setInterval(() => void pumpCoordination().catch(() => {}), intervalSeconds*1000);
+    pumpTimer.unref?.();
+    void pumpCoordination().catch(() => {});
+  }
+  async function stopCoordination() {
+    coordinationStopped = true;
+    clearInterval(pumpTimer); pumpTimer = null;
+    if (activePump) await activePump.catch(() => {});
+  }
   function facts(record) {
     return {
       project_id: record.project_id,
@@ -392,6 +458,19 @@ export function createBusiness({ filename, projects, decide, ai = null }) {
         }[action],
         data: { projection: projection(load(id), body.context.actor) },
       };
+      if (emitsState) {
+        const saved = load(id);
+        // Scope comes from the stored record and trusted project repository.
+        // create/edit/submit/approve all publish their committed revision;
+        // ordinary approval remains "approved", never "resource.published".
+        coordination.client.enqueue(store.db, {
+          version: "1.0", event_id: "state-" + body.request_id, module_id: MODULE_ID,
+          kind: "state.changed", machine_id: coordinatedMachine.id,
+          object_ref: { object_type: OBJECT_TYPE, object_id: saved.id },
+          state: saved.state, revision: saved.revision,
+          scope: { organization_id: saved.organization_id, project_id: saved.project_id },
+        });
+      }
       store.saveReceipt(body, id, response);
       return response;
     });
@@ -433,6 +512,7 @@ export function createBusiness({ filename, projects, decide, ai = null }) {
     workflow,
     handlers,
     workflowHandlers,
-    close: () => store.close(),
+    coordination: { pump: pumpCoordination, start: startCoordination, stop: stopCoordination },
+    close: async () => { await stopCoordination(); coordinationDb?.close(); await store.close(); },
   };
 }

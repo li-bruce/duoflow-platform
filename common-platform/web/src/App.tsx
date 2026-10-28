@@ -45,12 +45,14 @@ import FlowWorkbench from "./workflows/FlowWorkbench";
 import MyBusiness from "./MyBusiness";
 import ModuleHub from "./business/ModuleHub";
 import CompositionWorkbench from "./compositions/CompositionWorkbench";
+import Coordination from "./Coordination";
 import AccessManagement from "./AccessManagement";
 import DevTools from "./DevTools";
 import "./styles.css";
 import "./moduleStyles.css";
 
 type Page =
+  | "coordination"
   | "compositions"
   | "module-hub"
   | "devtools"
@@ -74,6 +76,13 @@ const pages: {
   description: string;
   admin?: boolean;
 }[] = [
+  {
+    id: "coordination",
+    label: "业务协同",
+    icon: Activity,
+    description: "汇集并行业务状态、处理公开申请与消息订阅",
+    admin: true,
+  },
   {
     id: "compositions",
     label: "组合业务",
@@ -988,6 +997,8 @@ export default function App() {
               />
             ) : page === "devtools" && isPlatformAdmin(user) ? (
               <DevTools user={user} />
+            ) : page === "coordination" && isPlatformAdmin(user) ? (
+              <Coordination user={user} />
             ) : page === "compositions" ? (
               <CompositionWorkbench context={context} />
             ) : page === "module-hub" ? (

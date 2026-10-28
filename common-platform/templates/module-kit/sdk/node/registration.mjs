@@ -26,6 +26,51 @@ function need(ok) {
     );
 }
 
+/** Reference checks shared with the platform's optional coordination contract. */
+function validateCoordination(registration) {
+  if (!Object.hasOwn(registration, "coordination")) return;
+  const declaration = registration.coordination;
+  const keys = (value, expected) => plain(value) && equal(Object.keys(value).sort(), expected.sort());
+  const bounded = (value, min, max, check) => Array.isArray(value) &&
+    value.length >= min && value.length <= max && value.every(check) &&
+    new Set(value).size === value.length;
+  const moduleId = (value) => typeof value === "string" && /^[a-z][a-z0-9_.-]{2,119}$/.test(value);
+  const localId = (value) => typeof value === "string" && /^[a-zA-Z][a-zA-Z0-9_.-]{0,159}$/.test(value);
+  const stateId = (value) => typeof value === "string" && /^[a-zA-Z][a-zA-Z0-9_.-]{0,127}$/.test(value);
+  const eventKinds = ["state.changed", "publication.requested", "resource.published", "resource.withdrawn"];
+  need(keys(declaration, ["version", "machines", "emits", "accepts"]) && declaration.version === "1.0" &&
+    Array.isArray(declaration.machines) && declaration.machines.length <= 32 &&
+    bounded(declaration.emits, 0, 4, (kind) => eventKinds.includes(kind)) &&
+    Array.isArray(declaration.accepts) && declaration.accepts.length <= 128);
+  const objects = new Set(registration.data_objects.map((object) => object.id));
+  const prefix = registration.module_id + ".";
+  const graphMachines = new Map((registration.module_graph?.state_machines ?? [])
+    .filter((machine) => machine.scope === "business").map((machine) => [machine.id, machine]));
+  const machineIds = new Set();
+  for (const machine of declaration.machines) {
+    need(keys(machine, ["id", "object_types", "states", "public_states", "approval_required"]) &&
+      localId(machine.id) && machine.id.startsWith(prefix) && !machineIds.has(machine.id) &&
+      bounded(machine.object_types, 1, 32, (id) => moduleId(id) && id.startsWith(prefix) && objects.has(id)) &&
+      bounded(machine.states, 1, 100, stateId) && bounded(machine.public_states, 0, 100, stateId) &&
+      machine.public_states.every((state) => machine.states.includes(state)) &&
+      typeof machine.approval_required === "boolean");
+    if (registration.registration_version === "1.1") {
+      const actual = graphMachines.get(machine.id);
+      need(actual && equal([...machine.states].sort(), actual.states.map((state) => state.id).sort()));
+    }
+    machineIds.add(machine.id);
+  }
+  const accepts = new Set();
+  for (const item of declaration.accepts) {
+    need(keys(item, ["source_module", "kind", "mode"]) && moduleId(item.source_module) &&
+      item.source_module !== registration.module_id && eventKinds.includes(item.kind) && item.kind !== "publication.requested" &&
+      ["notify", "sync"].includes(item.mode));
+    const identity = item.source_module + ":" + item.kind;
+    need(!accepts.has(identity));
+    accepts.add(identity);
+  }
+}
+
 /** Fail at service startup on missing/extra handlers or unsupported schemas. */
 export function createRegistration({
   manifest,
@@ -50,6 +95,7 @@ export function createRegistration({
       registration.module_version === manifest.module.version,
   );
   const ids = manifest.capabilities.map((cap) => cap.id).sort();
+  validateCoordination(registration);
   if (registration.ai_services !== undefined) {
     need(Array.isArray(registration.ai_services) && registration.ai_services.length <= 16 &&
       (!registration.ai_services.length || registration.permissions.mode === "platform_access"));
@@ -124,6 +170,7 @@ export function createRegistration({
       const required = ["invoke-1.1", "shared-hosts-1.0", "registration-1.0"];
       required.push(...extraFeatures);
       if (localRegistration.ai_services?.length) required.push("ai-services-1.0");
+      if (localRegistration.coordination !== undefined) required.push("coordination-1.0");
       if (modern)
         required.push(
           "registration-1.1",

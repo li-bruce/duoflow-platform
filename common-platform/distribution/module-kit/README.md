@@ -48,3 +48,7 @@ Skill 先使用固定版本的 business-observer 明确业务、状态和预期�
 ## 文档与演示预览
 
 运行 `python -m http.server 8040 --bind 127.0.0.1 --directory docs`，打开 `http://127.0.0.1:8040/`。GitHub Pages 使用仓库的 `docs/` 目录即可托管相同静态页面；站点启用由仓库设置管理。
+
+## 并行业务协同
+
+模块套件提供coordination 1.0声明和Node/Python事务Outbox/Inbox。不同模块可同时办理，向独立中心提交状态事件，按机构/项目订阅接收通知或同步提示。公开申请示例及接线见[并行业务状态协同](docs/并行业务状态协同.md)和[可运行示例](templates/module-kit/examples/coordination/README.md)。

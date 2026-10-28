@@ -17,6 +17,65 @@ class RegistrationError(ValueError):
 
 
 class Registration:
+    @classmethod
+    def _validate_coordination(cls, document):
+        """Portable startup checks; no dependency on a platform installation."""
+        if "coordination" not in document:
+            return
+        declaration = document["coordination"]
+        kinds = {"state.changed", "publication.requested", "resource.published", "resource.withdrawn"}
+
+        def keys(value, expected):
+            return isinstance(value, dict) and set(value) == set(expected)
+
+        def identifier(value):
+            return isinstance(value, str) and re.fullmatch(r"[a-z][a-z0-9_.-]{2,119}", value)
+
+        def local_identifier(value):
+            return isinstance(value, str) and re.fullmatch(r"[a-zA-Z][a-zA-Z0-9_.-]{0,159}", value)
+
+        def state_identifier(value):
+            return isinstance(value, str) and re.fullmatch(r"[a-zA-Z][a-zA-Z0-9_.-]{0,127}", value)
+
+        def bounded(value, minimum, maximum, check):
+            return (isinstance(value, list) and minimum <= len(value) <= maximum
+                    and all(check(item) for item in value) and len(set(value)) == len(value))
+
+        cls._need(keys(declaration, {"version", "machines", "emits", "accepts"})
+                  and declaration["version"] == "1.0"
+                  and isinstance(declaration["machines"], list) and len(declaration["machines"]) <= 32
+                  and bounded(declaration["emits"], 0, 4, lambda value: isinstance(value, str) and value in kinds)
+                  and isinstance(declaration["accepts"], list) and len(declaration["accepts"]) <= 128)
+        prefix = document["module_id"] + "."
+        objects = {obj["id"] for obj in document["data_objects"]}
+        graph_machines = {machine["id"]: machine for machine in
+                          document.get("module_graph", {}).get("state_machines", [])
+                          if machine["scope"] == "business"}
+        machine_ids = set()
+        for machine in declaration["machines"]:
+            cls._need(keys(machine, {"id", "object_types", "states", "public_states", "approval_required"})
+                      and local_identifier(machine["id"]) and machine["id"].startswith(prefix)
+                      and machine["id"] not in machine_ids
+                      and bounded(machine["object_types"], 1, 32,
+                                  lambda value: identifier(value) and value.startswith(prefix) and value in objects)
+                      and bounded(machine["states"], 1, 100, state_identifier)
+                      and bounded(machine["public_states"], 0, 100, state_identifier)
+                      and set(machine["public_states"]).issubset(machine["states"])
+                      and isinstance(machine["approval_required"], bool))
+            if document["registration_version"] == "1.1":
+                actual = graph_machines.get(machine["id"])
+                cls._need(actual is not None and set(machine["states"]) == {state["id"] for state in actual["states"]})
+            machine_ids.add(machine["id"])
+        accepts = set()
+        for item in declaration["accepts"]:
+            cls._need(keys(item, {"source_module", "kind", "mode"}) and identifier(item["source_module"])
+                      and item["source_module"] != document["module_id"]
+                      and isinstance(item["kind"], str) and item["kind"] in kinds and item["kind"] != "publication.requested"
+                      and isinstance(item["mode"], str) and item["mode"] in {"notify", "sync"})
+            identity = (item["source_module"], item["kind"])
+            cls._need(identity not in accepts)
+            accepts.add(identity)
+
     def __init__(
         self,
         manifest,
@@ -48,6 +107,7 @@ class Registration:
             == (manifest["module"]["id"], manifest["module"]["version"])
         )
         self.ids = sorted(cap["id"] for cap in manifest["capabilities"])
+        self._validate_coordination(document)
         if "ai_services" in document:
             services = document["ai_services"]
             self._need(isinstance(services, list) and len(services) <= 16
@@ -140,6 +200,8 @@ class Registration:
         required.update(self.required_platform_features)
         if self.document.get("ai_services"):
             required.add("ai-services-1.0")
+        if "coordination" in self.document:
+            required.add("coordination-1.0")
         if self.document["permissions"]["mode"] == "platform_access":
             required.add("access-1.0")
         if self.modern:

@@ -5,21 +5,21 @@
       "id": "architecture-core",
       "source": "common-platform/docs/通用框架架构与代码地图.md",
       "status": "ready",
-      "sha256": "25f0ea53804c7c3638eaca253327214fce53e2b79607d48be49bc6fb00450790",
+      "sha256": "5af7e5d37d5c46249322e04591e5a0e7417b7a47223901026bc4f72842378936",
       "blocked_links": 3
     },
     {
       "id": "module-debug",
       "source": "common-platform/docs/模块开发与调试说明书.md",
       "status": "ready",
-      "sha256": "6b26e5bfb773c633ffc418b45dbbdec44b33a75e0f75102ad7e04f9187df7f98",
+      "sha256": "a34d09c7530cdde501ae825e4ee5b7ad6d1d283c6b53b631d7fee1c91748e367",
       "blocked_links": 4
     },
     {
       "id": "migration",
       "source": "common-platform/docs/框架迁移与AI交接指南.md",
       "status": "ready",
-      "sha256": "d3ee3b334125a6a394ef045e77735f1fd37a5a15e6f70bb10784b1c2a625224f",
+      "sha256": "3d66e9836e76374007da5b82956b2f97a3728efb22260cdd46c5fcca5898b474",
       "blocked_links": 0
     }
   ]

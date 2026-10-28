@@ -1,4 +1,5 @@
-param([ValidateRange(1, 65535)][int]$Port = 8030, [string]$DataDirectory = $env:PLATFORM_DATA_DIR)
+param([ValidateRange(1, 65535)][int]$Port = 8030, [string]$DataDirectory = $env:PLATFORM_DATA_DIR,
+    [ValidateRange(1, 65535)][int]$MonitorPort = 8032, [string]$MonitorDataDirectory)
 $ErrorActionPreference = 'Stop'
 $projectRoot = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
 $pythonPath = Join-Path $projectRoot '.venv\Scripts\python.exe'
@@ -13,6 +14,11 @@ if (-not (Test-Path -LiteralPath $pythonPath)) { throw 'Run scripts/setup.ps1 fi
 if ($LASTEXITCODE -ne 0) { throw 'Developer prompt is stale. Review prompts/README.md and rebuild it before starting.' }
 if (-not (Test-Path -LiteralPath (Join-Path $projectRoot 'web\dist\index.html'))) { throw 'Build the web app first: npm run build in web/.' }
 New-Item -ItemType Directory -Path $dataPath,$logPath -Force | Out-Null
+if ($MonitorPort -eq $Port) { throw 'The API and independent monitor require different ports.' }
+if (-not $MonitorDataDirectory) { $MonitorDataDirectory = "$dataPath-monitor" }
+if (-not [IO.Path]::IsPathRooted($MonitorDataDirectory)) { $MonitorDataDirectory = Join-Path $projectRoot $MonitorDataDirectory }
+& $pythonPath (Join-Path $PSScriptRoot 'monitor_service.py') start --platform-data $dataPath --data-directory $MonitorDataDirectory --port $MonitorPort
+if ($LASTEXITCODE -ne 0) { throw 'Independent monitor startup failed. No existing process was stopped.' }
 if (Test-Path -LiteralPath $statePath) {
     $status = & (Join-Path $PSScriptRoot 'stop.ps1') -DataDirectory $dataPath -CheckOnly
     if ($status.running) {

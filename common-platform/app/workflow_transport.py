@@ -194,7 +194,7 @@ class WorkflowTransport:
         except RemoteServiceError as exc:
             raise PlatformError(exc.code, exc.message, 409) from None
 
-    async def request(self, actor, capability_id, operation, payload):
+    async def request(self, actor, capability_id, operation, payload, *, source_chain=()):
         require(
             isinstance(operation, str) and operation in OPERATIONS,
             "workflow_operation",
@@ -230,7 +230,7 @@ class WorkflowTransport:
             headers = {"Content-Type": "application/json"}
             if self.runtime.access.module_registered(spec["module_id"]):
                 headers["X-Platform-Access"] = self.runtime.access_bridge.issue(
-                    actor, spec, request_id, operation
+                    actor, spec, request_id, operation, source_chain=source_chain
                 )
             data = await self._remote(
                 spec, "POST", "workflow/" + operation, request_id, content, headers

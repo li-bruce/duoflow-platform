@@ -16,6 +16,9 @@ from jsonschema import Draft202012Validator
 VERSION = "1.0"
 FEATURES = ["invoke-1.0", "invoke-1.1", "access-1.0", "shared-hosts-1.0", "registration-1.0"]
 FEATURES += ["registration-1.1", "module-graph-1.0", "flow-exports-1.0", "runtime-observation-1.0"]
+FEATURES += ["source-reads-1.0"]
+FEATURES += ["ai-services-1.0"]
+FEATURES += ["coordination-1.0"]
 CHECKS = [
     ("manifest", "能力声明与输入输出"),
     ("registration", "数据、流程与权限声明"),
@@ -66,6 +69,26 @@ def digest(value):
     ).hexdigest()
 
 
+def validate_ai_services(document, manifest):
+    """Optional AI declarations bind services to concrete, scoped capabilities."""
+    services = document.get("ai_services", [])
+    schema = json.loads(
+        (ROOT / "contracts/ai/v1/declaration.schema.json").read_text(encoding="utf-8")
+    )
+    Draft202012Validator(schema).validate(services)
+    ids = [service["id"] for service in services]
+    if len(ids) != len(set(ids)):
+        raise ValueError("registration_ai_duplicate")
+    if services and document["permissions"]["mode"] != "platform_access":
+        raise ValueError("registration_ai_permissions")
+    capabilities = {capability["id"] for capability in manifest["capabilities"]}
+    for service in services:
+        if not service["id"].startswith(document["module_id"] + "."):
+            raise ValueError("registration_ai_namespace")
+        if not set(service["capability_ids"]).issubset(capabilities):
+            raise ValueError("registration_ai_capability")
+
+
 def validate_registration(document, manifest):
     """Reject unknown fields and inconsistent references before contacting handlers."""
     version = document.get("registration_version") if isinstance(document, dict) else None
@@ -78,6 +101,10 @@ def validate_registration(document, manifest):
         )
     )
     Draft202012Validator(schema).validate(document)
+    validate_ai_services(document, manifest)
+    from .coordination_contract import validate_coordination
+
+    validate_coordination(document)
     if document["workflow_operations"] != sorted(document["workflow_operations"]):
         raise ValueError("registration_interfaces")
     if (document["module_id"], document["module_version"]) != (

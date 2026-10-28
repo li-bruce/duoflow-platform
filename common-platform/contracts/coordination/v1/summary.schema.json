@@ -1,0 +1,379 @@
+{
+  "$defs": {
+    "ObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_type": {
+          "maxLength": 160,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Object Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_type",
+        "object_id"
+      ],
+      "title": "ObjectRef",
+      "type": "object"
+    },
+    "Scope": {
+      "additionalProperties": false,
+      "properties": {
+        "organization_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "project_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Project Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "organization_id",
+        "project_id"
+      ],
+      "title": "Scope",
+      "type": "object"
+    },
+    "SummaryApproval": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.:-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Actor Id"
+        },
+        "created_at": {
+          "minimum": 0,
+          "title": "Created At",
+          "type": "number"
+        },
+        "decided_at": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Decided At"
+        },
+        "event_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "machine_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Machine Id",
+          "type": "string"
+        },
+        "module_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Module Id",
+          "type": "string"
+        },
+        "object_ref": {
+          "$ref": "#/$defs/ObjectRef"
+        },
+        "object_revision": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "title": "Object Revision",
+          "type": "integer"
+        },
+        "revision": {
+          "maximum": 2,
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "state": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "State",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "approved",
+            "rejected"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "used_by": {
+          "anyOf": [
+            {
+              "maxLength": 160,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.:-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Used By"
+        }
+      },
+      "required": [
+        "event_id",
+        "module_id",
+        "machine_id",
+        "object_ref",
+        "state",
+        "object_revision",
+        "scope",
+        "status",
+        "revision",
+        "actor_id",
+        "created_at",
+        "decided_at",
+        "used_by"
+      ],
+      "title": "SummaryApproval",
+      "type": "object"
+    },
+    "SummaryBacklog": {
+      "additionalProperties": false,
+      "properties": {
+        "leased": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Leased",
+          "type": "integer"
+        },
+        "module_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Module Id",
+          "type": "string"
+        },
+        "pending": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Pending",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "module_id",
+        "pending",
+        "leased"
+      ],
+      "title": "SummaryBacklog",
+      "type": "object"
+    },
+    "SummaryCounts": {
+      "additionalProperties": false,
+      "properties": {
+        "approvals_pending": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Approvals Pending",
+          "type": "integer"
+        },
+        "deliveries_acked": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Deliveries Acked",
+          "type": "integer"
+        },
+        "deliveries_cancelled": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Deliveries Cancelled",
+          "type": "integer"
+        },
+        "deliveries_leased": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Deliveries Leased",
+          "type": "integer"
+        },
+        "deliveries_pending": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Deliveries Pending",
+          "type": "integer"
+        },
+        "events": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Events",
+          "type": "integer"
+        },
+        "objects": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Objects",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "events",
+        "objects",
+        "approvals_pending",
+        "deliveries_pending",
+        "deliveries_leased",
+        "deliveries_acked",
+        "deliveries_cancelled"
+      ],
+      "title": "SummaryCounts",
+      "type": "object"
+    },
+    "SummaryObject": {
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "machine_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Machine Id",
+          "type": "string"
+        },
+        "module_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Module Id",
+          "type": "string"
+        },
+        "object_ref": {
+          "$ref": "#/$defs/ObjectRef"
+        },
+        "revision": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "state": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "State",
+          "type": "string"
+        },
+        "updated_at": {
+          "minimum": 0,
+          "title": "Updated At",
+          "type": "number"
+        }
+      },
+      "required": [
+        "module_id",
+        "machine_id",
+        "object_ref",
+        "state",
+        "revision",
+        "scope",
+        "event_id",
+        "updated_at"
+      ],
+      "title": "SummaryObject",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "approvals": {
+      "items": {
+        "$ref": "#/$defs/SummaryApproval"
+      },
+      "maxItems": 100,
+      "title": "Approvals",
+      "type": "array"
+    },
+    "backlogs": {
+      "items": {
+        "$ref": "#/$defs/SummaryBacklog"
+      },
+      "maxItems": 100,
+      "title": "Backlogs",
+      "type": "array"
+    },
+    "config_revision": {
+      "maximum": 9007199254740991,
+      "minimum": 0,
+      "title": "Config Revision",
+      "type": "integer"
+    },
+    "counts": {
+      "$ref": "#/$defs/SummaryCounts"
+    },
+    "objects": {
+      "items": {
+        "$ref": "#/$defs/SummaryObject"
+      },
+      "maxItems": 100,
+      "title": "Objects",
+      "type": "array"
+    },
+    "version": {
+      "const": "1.0",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "version",
+    "config_revision",
+    "counts",
+    "objects",
+    "approvals",
+    "backlogs"
+  ],
+  "title": "Summary",
+  "type": "object"
+}

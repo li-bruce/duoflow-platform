@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api";
+import { statusLabel } from "./types";
 import { ErrorNotice, Loading } from "../ui";
 
 type Node = {
@@ -142,7 +143,7 @@ export default function CompositionGraph({ runId }: { runId: string }) {
         <div>
           <h3>整体业务图</h3>
           <p>
-            点击节点查看前后关系。绿色表示当前正式状态，蓝色表示本次调用成功。
+            点击节点查看前后关系。绿色表示当前正式状态；蓝色表示组合步骤完成或原子调用成功。调用记录另行显示。
           </p>
         </div>
         {updated && <small>最近读取 {updated}</small>}
@@ -277,7 +278,9 @@ export default function CompositionGraph({ runId }: { runId: string }) {
                         ? " · 当前状态"
                         : node.activity
                           ? " · " +
-                            (activityTitle[node.activity] || node.activity)
+                            (node.kind === "entry"
+                              ? "步骤" + (statusLabel[node.activity] || node.activity)
+                              : activityTitle[node.activity] || node.activity)
                           : ""}
                     </text>
                     <title>{node.title}</title>

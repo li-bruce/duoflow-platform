@@ -1,0 +1,267 @@
+{
+  "$defs": {
+    "Accept": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "state.changed",
+            "publication.requested",
+            "resource.published",
+            "resource.withdrawn"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "notify",
+            "sync"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "source_module": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Source Module",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_module",
+        "kind",
+        "mode"
+      ],
+      "title": "Accept",
+      "type": "object"
+    },
+    "Machine": {
+      "additionalProperties": false,
+      "properties": {
+        "approval_required": {
+          "default": false,
+          "title": "Approval Required",
+          "type": "boolean"
+        },
+        "id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "object_types": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "title": "Object Types",
+          "type": "array"
+        },
+        "public_states": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Public States",
+          "type": "array"
+        },
+        "states": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "title": "States",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "object_types",
+        "states"
+      ],
+      "title": "Machine",
+      "type": "object"
+    },
+    "PublicModule": {
+      "additionalProperties": false,
+      "properties": {
+        "accepts": {
+          "items": {
+            "$ref": "#/$defs/Accept"
+          },
+          "maxItems": 200,
+          "title": "Accepts",
+          "type": "array"
+        },
+        "emits": {
+          "items": {
+            "enum": [
+              "state.changed",
+              "publication.requested",
+              "resource.published",
+              "resource.withdrawn"
+            ],
+            "type": "string"
+          },
+          "maxItems": 4,
+          "title": "Emits",
+          "type": "array"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "machines": {
+          "items": {
+            "$ref": "#/$defs/Machine"
+          },
+          "maxItems": 50,
+          "title": "Machines",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "enabled",
+        "machines",
+        "emits",
+        "accepts"
+      ],
+      "title": "PublicModule",
+      "type": "object"
+    },
+    "Scope": {
+      "additionalProperties": false,
+      "properties": {
+        "organization_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "project_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Project Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "organization_id",
+        "project_id"
+      ],
+      "title": "Scope",
+      "type": "object"
+    },
+    "Subscription": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "state.changed",
+            "publication.requested",
+            "resource.published",
+            "resource.withdrawn"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "notify",
+            "sync"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "source_module": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Source Module",
+          "type": "string"
+        },
+        "target_module": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Target Module",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source_module",
+        "target_module",
+        "kind",
+        "scope",
+        "mode"
+      ],
+      "title": "Subscription",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "config_revision": {
+      "maximum": 9007199254740991,
+      "minimum": 0,
+      "title": "Config Revision",
+      "type": "integer"
+    },
+    "modules": {
+      "items": {
+        "$ref": "#/$defs/PublicModule"
+      },
+      "maxItems": 100,
+      "title": "Modules",
+      "type": "array"
+    },
+    "subscriptions": {
+      "items": {
+        "$ref": "#/$defs/Subscription"
+      },
+      "maxItems": 500,
+      "title": "Subscriptions",
+      "type": "array"
+    },
+    "version": {
+      "const": "1.0",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "version",
+    "config_revision",
+    "modules",
+    "subscriptions"
+  ],
+  "title": "ControlConfiguration",
+  "type": "object"
+}

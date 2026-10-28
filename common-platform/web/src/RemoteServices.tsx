@@ -6,6 +6,8 @@ import { api, post } from './api';
 import type { Capability, Monitor, Surfaces, User } from './types';
 import { Empty, ErrorNotice, Loading, PrettyData, Success } from './ui';
 import { AvailabilityBadge, MonitorPanel, SurfaceSummary } from './ModuleStatus';
+import MonitoringSummary from './MonitoringSummary';
+import type { MonitoringSnapshot } from './MonitoringSummary';
 
 type Health = {ok:boolean;message:string;latency_ms?:number};
 type Manifest = {protocol_version?:string;module:{id:string;name:string;version:string;description?:string};capabilities:Capability[];surfaces?:Surfaces};
@@ -19,6 +21,7 @@ const invokeVersion=(version?:string)=>version==='1.2'?'1.1':['1.0','1.1'].inclu
 
 export default function RemoteServices({user,onRegistryChanged,compact=false}:{user:User;onRegistryChanged?:()=>void;compact?:boolean}){
   const [items,setItems]=useState<Service[]>([]);
+  const [monitoring,setMonitoring]=useState<MonitoringSnapshot>();
   const [selected,setSelected]=useState<string|null>(null);
   const [form,setForm]=useState<Form>(fresh);
   const [loading,setLoading]=useState(true);
@@ -41,13 +44,13 @@ export default function RemoteServices({user,onRegistryChanged,compact=false}:{u
     const request=++sequence.current;const epoch=generation.current;const owner=identity.current;
     const current=()=>mounted.current&&epoch===generation.current&&owner===identity.current&&request===sequence.current;
     reading.current=request;if(!silent){setLoading(true);setError(null);}
-    try{const value=await api<{items:Service[]}>('/remote-services');if(current()){setItems(value.items);setPollError(null);return value.items;}}
+    try{const value=await api<{items:Service[];monitoring?:MonitoringSnapshot}>('/remote-services');if(current()){setItems(value.items);setMonitoring(value.monitoring);setPollError(null);return value.items;}}
     catch(e){if(current()){if(silent)setPollError(e);else setError(e);}}
     finally{if(reading.current===request)reading.current=null;if(current())setLoading(false);}
   },[]);
   useEffect(()=>{
     mounted.current=true;generation.current++;sequence.current++;reading.current=null;busyRef.current=false;
-    setItems([]);select(null);setBusy('');setPollError(null);setLoading(isPlatformAdmin(user));
+    setItems([]);setMonitoring(undefined);select(null);setBusy('');setPollError(null);setLoading(isPlatformAdmin(user));
     if(!isPlatformAdmin(user))return()=>{mounted.current=false;generation.current++;sequence.current++;};
     const version=editVersion.current;
     void load().then(rows=>{if(rows&&version===editVersion.current&&rows.length)select(rows[0]);});
@@ -107,6 +110,7 @@ export default function RemoteServices({user,onRegistryChanged,compact=false}:{u
   const staleEdit=Boolean(saved&&form.expected_revision!==saved.revision);
   return <section className={'model-settings remote-services '+(compact?'compact':'')} aria-label="远程服务接入">
     <div className="model-intro"><div className="icon-tile"><Cloud size={21}/></div><div><h2>让外部服务成为工作台能力</h2><p>远程实现按统一 HTTP 契约接入；页面工具和对话能力分别声明，共用同一服务。</p></div><span className="tag">{items.length} 个服务</span></div>
+    <MonitoringSummary value={monitoring} serviceId={saved?.id} revision={saved?.revision}/>
     {loading&&items.length===0?<Loading label="正在读取服务连接…"/>:<div className="model-layout">
       <aside className="model-list"><button className="button secondary full" onClick={()=>select(null)} disabled={!!busy}><Plus size={16}/>新建服务</button>{items.map(item=><button key={item.id} className={'model-item '+(selected===item.id?'selected':'')} onClick={()=>select(item)} disabled={!!busy}><span className="model-item-name"><Cloud size={16}/>{item.name}</span><small>{item.base_url}</small><span className={'connection-dot '+(item.enabled?'enabled':'')}>{stateLabel(item)}{item.manifest?` · v${item.manifest.module.version}`:''}</span><AvailabilityBadge state={item.monitor?.state}/></button>)}<button className="text-button service-refresh" disabled={!!busy||loading} onClick={()=>void refreshList()}><RefreshCw size={13} className={loading?'spin':''}/>刷新列表</button></aside>
       <div className="model-editor">

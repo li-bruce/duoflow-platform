@@ -96,6 +96,7 @@ def validators(target: Path):
         "module_contract",
         "workspace_contract",
         "registration_contract",
+        "coordination_contract",
         "state_machines",
         "module_graph",
         "flow_exports",
@@ -170,6 +171,9 @@ def build_kit(target: Path):
     write(target / "docs/主框架说明.md", (ROOT / "docs/主框架说明.md").read_text(encoding="utf-8"))
     write(target / "docs/原子组件与公开业务流.md", (ROOT / "docs/原子组件与公开业务流.md").read_text(encoding="utf-8"))
     write(target / "docs/组合业务运行与角色.md", (ROOT / "docs/组合业务运行与角色.md").read_text(encoding="utf-8"))
+    write(target / "docs/模块AI服务与配置.md", (ROOT / "docs/模块AI服务与配置.md").read_text(encoding="utf-8"))
+    write(target / "docs/独立监控服务设计.md", (ROOT / "docs/独立监控服务设计.md").read_text(encoding="utf-8"))
+    write(target / "docs/并行业务状态协同.md", (ROOT / "docs/并行业务状态协同.md").read_text(encoding="utf-8"))
     for name in ('通用框架架构与代码地图.md', '模块开发与调试说明书.md', '框架迁移与AI交接指南.md'):
         write(target / 'docs' / name, (ROOT / 'docs' / name).read_text(encoding='utf-8'))
     sources = (
@@ -181,6 +185,7 @@ def build_kit(target: Path):
             "module_contract",
             "workspace_contract",
             "registration_contract",
+            "coordination_contract",
             "state_machines",
             "module_graph",
             "flow_exports",

@@ -15,6 +15,10 @@
 
 模块 ID 是 `__MODULE_ID__`，前端安装包名是 `__PACK_NAME__`。正式项目应使用自己的唯一标识，不与其他模块命名空间包含或重叠。
 
+## 可选 AI 服务
+
+`backend/registration.json` 的 `ai_services: []` 是模型服务正式声明位置；本模板默认不调用模型。实际需要 AI 时增加服务条目（能力绑定和支持来源），用随包 `sdk/node/ai-service.mjs` 创建 `AIServiceManager`，在 `backend/server.mjs` 显式传 `aiManager` 给 `createModuleServer` 并从真实业务 handler 调用。服务端私有配置放在 `SERVICE_DATA_DIR/ai`，不能写入声明、共享界面或业务回执。接入平台后由管理员交互选择平台 API 或模块 API，每次双向验证当前票据、来源绑定及配置修订，不作自动回退。字段与接线见生成包 `examples/ai-services/README.md`。未适配和验收之前，不把这个可选声明位置称为模块已具备 AI 业务。
+
 ## 职责和范围
 
 | 职责 | 允许动作 | 范围与条件 | 页面和对话 |

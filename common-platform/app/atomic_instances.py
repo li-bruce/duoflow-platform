@@ -32,14 +32,27 @@ class AtomicInstances:
             )"""
             )
 
-    async def resolve(self, actor, kind, instance_id):
+    async def resolve(self, actor, kind, instance_id, *, business_read=True):
         """Load the real owned instance, then attach validated atomic identities."""
         require(kind in {"interaction", "workflow"}, "atomic_host", "组件宿主类型无效。", 422)
         if kind == "workflow":
-            item = await self.runtime.workflows.get(actor, instance_id)
+            if business_read:
+                item = await self.runtime.workflows.get(actor, instance_id)
+            else:
+                # A presence heartbeat reports only this browser's UI status.
+                # load checks live identity, ownership, access stamp and host
+                # definition without remote object/list IO or adopting a Run.
+                with self.runtime.sessions() as db:
+                    row, _ = self.runtime.workflows.load(db, actor, instance_id)
+                    item = {"flow_id": row.flow_id, "revision": row.revision}
             host_id, host_kind = item["flow_id"], "workflow_step"
         else:
-            item = self.runtime.interactions.get(actor, instance_id)
+            if business_read:
+                item = self.runtime.interactions.get(actor, instance_id)
+            else:
+                with self.runtime.sessions() as db:
+                    row, _ = self.runtime.interactions.load(db, actor, instance_id)
+                    item = {"component_id": row.component_id, "revision": row.revision}
             host_id, host_kind = item["component_id"], "interaction"
         for source in self.runtime.module_catalog.sources():
             candidates = [
@@ -50,7 +63,11 @@ class AtomicInstances:
                 and a["host"]["kind"] == host_kind
             ]
             if candidates:
-                module = self.runtime.module_catalog.module(actor, source["module_id"])
+                # load already checked this exact owned host's current access.
+                # Validate its registered graph, but a heartbeat must not walk
+                # every public business entry and availability in the module.
+                module = (self.runtime.module_catalog.module(actor, source["module_id"])
+                          if business_read else self.runtime.module_catalog.checked(source))
                 atoms = [
                     a
                     for a in module["graph"]["atoms"]
@@ -63,7 +80,7 @@ class AtomicInstances:
 
     async def report(self, actor, kind, instance_id, body):
         """Accept bounded presentation status only after checking the real host."""
-        item, module, atoms = await self.resolve(actor, kind, instance_id)
+        item, module, atoms = await self.resolve(actor, kind, instance_id, business_read=False)
         if module is None:
             return {"registered": False}
         atom = next((a for a in atoms if a["host"].get("step_id") == body.step_id), None)

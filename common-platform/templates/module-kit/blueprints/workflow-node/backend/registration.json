@@ -2,6 +2,7 @@
   "registration_version": "1.1",
   "module_id": "__MODULE_ID__",
   "module_version": "1.0.0",
+  "ai_services": [],
   "permissions": {
     "mode": "platform_access",
     "definition": {
@@ -1900,5 +1901,11 @@
     "version": "1.0",
     "transport": "callback",
     "authentication": "call_ticket"
+  },
+  "coordination": {
+    "version": "1.0",
+    "machines": [],
+    "emits": [],
+    "accepts": []
   }
 }

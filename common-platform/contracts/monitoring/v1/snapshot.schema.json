@@ -1,0 +1,402 @@
+{
+  "$defs": {
+    "Counters": {
+      "additionalProperties": false,
+      "properties": {
+        "accepted_reports": {
+          "minimum": 0,
+          "title": "Accepted Reports",
+          "type": "integer"
+        },
+        "health_requests": {
+          "minimum": 0,
+          "title": "Health Requests",
+          "type": "integer"
+        },
+        "snapshot_reads": {
+          "minimum": 0,
+          "title": "Snapshot Reads",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "accepted_reports",
+        "health_requests",
+        "snapshot_reads"
+      ],
+      "title": "Counters",
+      "type": "object"
+    },
+    "Health": {
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "enum": [
+            "healthy",
+            "degraded",
+            "offline",
+            "stale",
+            "unknown"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "last_checked_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Checked At"
+        },
+        "last_success_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Success At"
+        },
+        "latency_ms": {
+          "anyOf": [
+            {
+              "maximum": 60000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Latency Ms"
+        },
+        "consecutive_failures": {
+          "minimum": 0,
+          "title": "Consecutive Failures",
+          "type": "integer"
+        },
+        "message": {
+          "enum": [
+            "尚未完成健康检查。",
+            "健康检查结果已过期，请等待后台检测或手动检查。",
+            "远程服务连接正常。",
+            "远程健康检查未通过。"
+          ],
+          "title": "Message",
+          "type": "string"
+        },
+        "interval_seconds": {
+          "const": 15,
+          "title": "Interval Seconds",
+          "type": "integer"
+        },
+        "stale_after_seconds": {
+          "const": 45,
+          "title": "Stale After Seconds",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "state",
+        "last_checked_at",
+        "last_success_at",
+        "latency_ms",
+        "consecutive_failures",
+        "message",
+        "interval_seconds",
+        "stale_after_seconds"
+      ],
+      "title": "Health",
+      "type": "object"
+    },
+    "Item": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-z][a-z0-9_.-]{1,79}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "monitor": {
+          "$ref": "#/$defs/Health"
+        },
+        "load": {
+          "$ref": "#/$defs/Load"
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "monitor",
+        "load"
+      ],
+      "title": "Item",
+      "type": "object"
+    },
+    "Load": {
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "enum": [
+            "fresh",
+            "stale",
+            "unknown"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "last_received_at": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Received At"
+        },
+        "fresh_instances": {
+          "maximum": 16,
+          "minimum": 0,
+          "title": "Fresh Instances",
+          "type": "integer"
+        },
+        "reported_instances": {
+          "maximum": 16,
+          "minimum": 0,
+          "title": "Reported Instances",
+          "type": "integer"
+        },
+        "metrics": {
+          "$ref": "#/$defs/LoadMetrics"
+        }
+      },
+      "required": [
+        "state",
+        "last_received_at",
+        "fresh_instances",
+        "reported_instances",
+        "metrics"
+      ],
+      "title": "Load",
+      "type": "object"
+    },
+    "LoadMetrics": {
+      "additionalProperties": false,
+      "properties": {
+        "cpu_percent": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cpu Percent"
+        },
+        "rss_bytes": {
+          "anyOf": [
+            {
+              "maximum": 18446744073709551616,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Rss Bytes"
+        },
+        "inflight_requests": {
+          "anyOf": [
+            {
+              "maximum": 16000000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Inflight Requests"
+        },
+        "queue_depth": {
+          "anyOf": [
+            {
+              "maximum": 16000000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Queue Depth"
+        },
+        "requests_total": {
+          "anyOf": [
+            {
+              "maximum": 144115188075855872,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Requests Total"
+        },
+        "errors_total": {
+          "anyOf": [
+            {
+              "maximum": 144115188075855872,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Errors Total"
+        }
+      },
+      "required": [
+        "cpu_percent",
+        "rss_bytes",
+        "inflight_requests",
+        "queue_depth",
+        "requests_total",
+        "errors_total"
+      ],
+      "title": "LoadMetrics",
+      "type": "object"
+    },
+    "Summary": {
+      "additionalProperties": false,
+      "properties": {
+        "total": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        },
+        "healthy": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "Healthy",
+          "type": "integer"
+        },
+        "degraded": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "Degraded",
+          "type": "integer"
+        },
+        "offline": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "Offline",
+          "type": "integer"
+        },
+        "stale": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "Stale",
+          "type": "integer"
+        },
+        "unknown": {
+          "maximum": 256,
+          "minimum": 0,
+          "title": "Unknown",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total",
+        "healthy",
+        "degraded",
+        "offline",
+        "stale",
+        "unknown"
+      ],
+      "title": "Summary",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "monitor_version": {
+      "const": "1.0",
+      "title": "Monitor Version",
+      "type": "string"
+    },
+    "owner_id": {
+      "pattern": "^[a-f0-9]{32}$",
+      "title": "Owner Id",
+      "type": "string"
+    },
+    "collector_id": {
+      "pattern": "^[a-f0-9]{32}$",
+      "title": "Collector Id",
+      "type": "string"
+    },
+    "generated_at": {
+      "minimum": 0,
+      "title": "Generated At",
+      "type": "number"
+    },
+    "revision": {
+      "minimum": 0,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "targets_digest": {
+      "pattern": "^([a-f0-9]{64})?$",
+      "title": "Targets Digest",
+      "type": "string"
+    },
+    "summary": {
+      "$ref": "#/$defs/Summary"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/Item"
+      },
+      "maxItems": 256,
+      "title": "Items",
+      "type": "array"
+    },
+    "counters": {
+      "$ref": "#/$defs/Counters"
+    }
+  },
+  "required": [
+    "monitor_version",
+    "owner_id",
+    "collector_id",
+    "generated_at",
+    "revision",
+    "targets_digest",
+    "summary",
+    "items",
+    "counters"
+  ],
+  "title": "Snapshot",
+  "type": "object"
+}

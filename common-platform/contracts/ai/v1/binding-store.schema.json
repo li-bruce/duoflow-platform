@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "module_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]{2,119}$"
+          },
+          "service_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]{2,119}$"
+          },
+          "source": {
+            "enum": [
+              "disabled",
+              "platform",
+              "module"
+            ]
+          },
+          "platform_profile_id": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,80}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "remote_service_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,80}$"
+          },
+          "remote_revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "contract_digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "module_id",
+          "service_id",
+          "source",
+          "platform_profile_id",
+          "revision",
+          "remote_service_id",
+          "remote_revision",
+          "contract_digest"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "source": {
+                  "const": "platform"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "platform_profile_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,80}$"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "platform_profile_id": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "version",
+    "items"
+  ]
+}

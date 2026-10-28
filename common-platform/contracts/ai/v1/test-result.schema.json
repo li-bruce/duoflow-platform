@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "ok": {
+      "const": true
+    },
+    "message": {
+      "type": "string",
+      "maxLength": 300
+    },
+    "latency_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "response_preview": {
+      "type": "string",
+      "maxLength": 240
+    }
+  },
+  "required": [
+    "ok",
+    "message",
+    "latency_ms",
+    "model"
+  ]
+}

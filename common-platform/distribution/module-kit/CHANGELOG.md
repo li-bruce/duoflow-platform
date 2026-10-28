@@ -1,5 +1,25 @@
 # 发布记录
 
+## 本地后续候选：独立技术监控报告1.0
+
+- Node/Python可选telemetry SDK直达独立服务，使用独立报告令牌；失败不影响业务。
+- Node流程模板可从私有配置显式启用真实进程采样及HTTP计数，缺失队列指标保持未知。
+- 携带实际Schema和说明，Python锁定psutil依赖；不将业务观察或界面presence混作技术监控。
+
+## 本地后续候选：模块AI服务1.0
+
+- registration.ai_services正式声明AI服务位置及能力关联，不放入供应商凭据。
+- Python/Node AIServiceManager支持模块自有加密配置、独立运行、固定配置管理接口，以及平台明确选源的调用与提交前复验。
+- 模板、独立示例、纯声明校验器、锁定依赖、使用说明及Skill同步；无AI声明旧模块保持兼容，不虚构AI能力。
+
+## 未发布适配候选（2026-10-26）
+
+- 新增受限、当前用户下的固定来源对象读取客户端，以及可选 source-reads-1.0 握手要求。
+- 源错误保留安全 code / HTTP status，区分授权、版本、契约和服务不可用。
+- 静态检查递归计算前端生产依赖闭包，并提供不导入后端的 frontend-only 检查。
+- Observer 增加只读 preflight，保留坏基线及完整 gate 失败；不据此声称完整同步通过。
+- 此节是本地候选说明，不修改已经发布的 v0.02 标签或历史验证结论。
+
 ## v0.02
 
 - 增加 module-graph、flow-exports、runtime-observation 及 composition 公共契约。

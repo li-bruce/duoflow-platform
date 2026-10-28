@@ -18,11 +18,17 @@ Python 工具在 backend/business.py 实现业务，backend/handlers.py 接入�
 
 ## 4. 连续维护和测试
 
+实际使用AI的能力还需按[模块AI服务与配置](模块AI服务与配置.md)在 `registration.ai_services` 声明稳定服务、关联能力和支持的连接来源，接入同批AIServiceManager与配置控制路由。模块自己的地址/模型/密钥存入私有配置；平台管理界面可代理配置并显式选择平台API或模块自有API。业务传真实调用scope，使用返回的route在最终写入前复验；测试两种来源、停用、错误、切换、当前撤权和保存后重启，不用环境变量捷径绕过中央来源绑定。没有AI行为的模块无需添加声明。
+
+安装前使用 `check` 返回的 `frontend_files` 生产依赖清单，保持包内相对结构。源仓库中的预览/测试文件与包外样例不自动安装。可用 `scripts/module_kit.py check <模块> --frontend-only` 独立核对这部分；它只调用静态 TypeScript 解析，不导入后端权限引擎。完整 `check` 仍要求同批 Kit 的纯校验依赖，且不代替真实宿主构建。
+
 按 docs/OBSERVER.md 安装支持文件并维护映射。每轮先运行 `change_sync begin`，完成修改后运行 `bo_sync scan`，再依次运行 `change_sync inspect`、`change_sync verify`、`change_sync accept` 和 `change_sync check`。扫描与变更检查是两个独立工具，具体参数以固定版本的上游说明为准。正常与拒绝场景独立定义，实际读存储和函数结果；关闭或故障观测时核对业务结果。
 
 从套件根运行 `python scripts/module_kit.py check <模块目录>`。Python 模板运行 `python <模块目录>/tests/self_test.py`；Node 模板在自身根运行 `node --test tests/workflow.test.mjs`。这些合成测试与平台的真实授权联调分别记录。
 
 ## 5. 主平台接入
+
+需要跨模块固定来源时，检查配套平台是否提供可选 `source-reads-1.0`。同批 SDK 的 `source-read-client.mjs` / `source_reads.py` 调用固定平台回调，由平台重新检查两端并通过已登记 `objects.read` 读取。目标票据不转递到源，源票据不进入表单/历史。详见随包 `contracts/access/v1/source-reads.md`；缺少该能力时明确拒绝来源读取，不能信任客户端自报数据替代授权。
 
 Python SDK 可在套件自己的环境中运行 `python -m pytest templates/module-kit/sdk/python/tests -q --basetemp work/sdk-tests`。锁文件包含实际 HTTP 客户端依赖；需要主平台的授权集成用例归属主框架测试目录，套件测试仅使用本仓库源码。
 

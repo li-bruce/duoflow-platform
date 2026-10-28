@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "consumer_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "title": "Consumer Id",
+      "type": "string"
+    },
+    "lease_token": {
+      "maxLength": 256,
+      "minLength": 16,
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "title": "Lease Token",
+      "type": "string"
+    }
+  },
+  "required": [
+    "consumer_id",
+    "lease_token"
+  ],
+  "title": "Ack",
+  "type": "object"
+}

@@ -64,3 +64,20 @@ it("searches actual graph nodes without inventing a match", async () => {
   );
   expect(screen.getByText("没有找到相应节点。")).toBeTruthy();
 });
+
+it("separates completed composition steps from successful calls without inventing traces", async () => {
+  vi.mocked(api).mockResolvedValue({
+    ...graph,
+    nodes: [
+      { id: "a::entry", title: "已完成的人工业务", kind: "entry", step_id: "a", activity: "succeeded" },
+      { id: "b::atom", title: "实际调用", kind: "business", step_id: "b", activity: "succeeded" },
+    ],
+    edges: [],
+    observations: [{ step_id: "a", freshness: "empty" }],
+  });
+  render(<CompositionGraph runId="completed-workflows" />);
+  expect(await screen.findByText("业务入口 · 步骤已完成")).toBeTruthy();
+  expect(screen.getByText("业务处理 · 调用成功")).toBeTruthy();
+  expect(screen.queryByText("业务入口 · 调用成功")).toBeNull();
+  expect(screen.getByText("提交业务：等待调用记录")).toBeTruthy();
+});

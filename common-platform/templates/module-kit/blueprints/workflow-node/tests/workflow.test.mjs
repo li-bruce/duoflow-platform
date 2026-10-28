@@ -17,6 +17,8 @@ import {
 import { createObservationClient } from "../sdk/node/observation.mjs";
 import { compile, createModuleServer } from "../sdk/node/runtime.mjs";
 import { createAtomBindings } from "../sdk/node/atoms.mjs";
+import { CoordinationClient } from "../sdk/node/coordination.mjs";
+import { createBusiness, stateMachine } from "../backend/business.mjs";
 import {
   assertTransition,
   assertAtomResult,
@@ -42,18 +44,56 @@ async function listen(server) {
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   return `http://127.0.0.1:${server.address().port}`;
 }
-async function fixture(t) {
+async function fixture(t, { coordinated = false, credentialOnly = false, coordinationHandler = null, incoming = null,
+  coordinationDelayMilliseconds = 0, coordinationUnavailable = false, incomingReady = true } = {}) {
   const directory = mkdtempSync(path.join(tmpdir(), "module-kit-node-"));
   const tickets = new Map(),
     seen = [],
     revoked = new Set();
+  const events = [], acknowledgements = [];
+  let pulls = 0;
+  let signalFirstEvent;
+  const firstEvent = new Promise(resolve => { signalFirstEvent = resolve; });
+  let commitGate = null, signalCommit = null;
+  const registrationDocument = structuredClone(registration);
+  if (coordinated) registrationDocument.coordination = {
+    version: "1.0",
+    machines: [{id:stateMachine.id, object_types:[`${M}.record`], states:stateMachine.states.map(state => state.id), public_states:[], approval_required:false}],
+    emits: ["state.changed"],
+    accepts: incoming ? [{source_module:"neighbor.data",kind:"state.changed",mode:"notify"}] : [],
+  };
   let unavailable = false,
     denyCommit = false;
   const central = http.createServer(async (req, res) => {
     let body = "";
     for await (const chunk of req) body += chunk;
-    const input = JSON.parse(body),
+    const input = body ? JSON.parse(body) : {},
       claims = tickets.get(req.headers["x-platform-access"]);
+    if (req.url === "/api/v1/coordination/events") {
+      assert.equal(req.headers.authorization, "Bearer synthetic-coordination-module-token");
+      signalFirstEvent();
+      if (coordinationDelayMilliseconds) await new Promise(resolve => setTimeout(resolve, coordinationDelayMilliseconds));
+      if (coordinationUnavailable) {
+        res.writeHead(503,{"Content-Type":"application/json"}); res.end("{}"); return;
+      }
+      const duplicate = events.some(event => event.event_id === input.event_id);
+      if (!duplicate) events.push(input);
+      res.writeHead(200, {"Content-Type":"application/json"});
+      res.end(JSON.stringify({accepted:true, duplicate, event_id:input.event_id}));
+      return;
+    }
+    if (req.url.startsWith("/api/v1/coordination/deliveries?")) {
+      pulls++;
+      res.writeHead(200, {"Content-Type":"application/json"});
+      res.end(JSON.stringify({version:"1.0",module_id:M,consumer_id:M+".worker",deliveries:incoming && incomingReady && !acknowledgements.length ? [incoming] : []}));
+      return;
+    }
+    if (req.url.startsWith("/api/v1/coordination/deliveries/") && req.url.endsWith("/ack")) {
+      acknowledgements.push(input);
+      res.writeHead(200, {"Content-Type":"application/json"});
+      res.end(JSON.stringify({acknowledged:true,duplicate:false,delivery_id:incoming.id}));
+      return;
+    }
     if (req.url === "/api/v1/runtime-observations/probe") {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ accepted: true, nonce: input.nonce }));
@@ -106,6 +146,10 @@ async function fixture(t) {
       seen.filter((item) => item.request_id === input.request_id).length > 1
     )
       reason = "access_authorization_changed";
+    if (commitGate && input.permission === `${M}.edit` &&
+        seen.filter(item => item.request_id === input.request_id).length > 1) {
+      signalCommit(); await commitGate; commitGate = null;
+    }
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(
       JSON.stringify({
@@ -122,6 +166,9 @@ async function fixture(t) {
       callbackUrl: centralUrl + "/api/v1/access/remote-decisions",
       filename,
       projects,
+      registrationDocument,
+      coordinationConfig: coordinated || credentialOnly ? {version:"1.0",module_id:M,url:centralUrl,token:"synthetic-coordination-module-token",interval_seconds:300} : null,
+      coordinationHandler,
     }),
     url = await listen(service.server);
   const makeBody = (action, input, who = "author") => ({
@@ -188,6 +235,19 @@ async function fixture(t) {
     invoke,
     flow,
     create,
+    events,
+    acknowledgements,
+    get pulls() { return pulls; },
+    pump: () => service.coordination.pump(),
+    firstEvent,
+    enableIncoming: () => { incomingReady = true; },
+    holdNextEditCommit: () => {
+      let release, signal;
+      commitGate = new Promise(resolve => { release=resolve; });
+      const entered = new Promise(resolve => { signal=resolve; });
+      signalCommit = signal;
+      return { entered, release };
+    },
     setUnavailable: (value) => {
       unavailable = value;
     },
@@ -201,6 +261,9 @@ async function fixture(t) {
         callbackUrl: centralUrl + "/api/v1/access/remote-decisions",
         filename,
         projects,
+        registrationDocument,
+        coordinationConfig: coordinated || credentialOnly ? {version:"1.0",module_id:M,url:centralUrl,token:"synthetic-coordination-module-token",interval_seconds:300} : null,
+        coordinationHandler,
       });
       url = await listen(service.server);
     },
@@ -256,6 +319,7 @@ test("registration checks both complete contracts and actual bindings without bu
       "module-graph-1.0",
       "flow-exports-1.0",
       "runtime-observation-1.0",
+      "coordination-1.0",
     ],
     manifest,
     registration,
@@ -276,6 +340,7 @@ test("registration checks both complete contracts and actual bindings without bu
     answer.capability_ids,
     manifest.capabilities.map((cap) => cap.id).sort(),
   );
+  assert.equal((await confirm({...offer,platform_features:offer.platform_features.filter(feature => feature !== "coordination-1.0")})).status, 422);
   for (const field of ["manifest", "registration", "platform_features"])
     assert.equal((await confirm({ ...offer, [field]: [] })).status, 422);
   assert.equal((await confirm({})).status, 422);
@@ -708,4 +773,137 @@ test("stateless role-based tools execute without central tickets and still rejec
   body.context.actor.role = "researcher";
   body.context.actor.roles = ["researcher"];
   assert.equal((await send(body)).status, 403);
+});
+
+test("optional coordination emits each committed business revision with trusted scope and no publication inference", async t => {
+  const f = await fixture(t, { coordinated:true });
+  const body = f.makeBody("create", {command:{project_id:"P",title:"协同记录",body:"内容"}});
+  const created = await f.request(body), object_id = created.body.data.projection.object_ref.object_id;
+  assert.equal(created.status, 200);
+  assert.equal((await f.request(body)).status, 200);
+  assert.equal((await f.invoke("edit", {object_id,expected_revision:1,command:{title:"修改",body:"已改"}})).status, 200);
+  assert.equal((await f.invoke("submit", {object_id,expected_revision:2,command:{}})).status, 200);
+  assert.equal((await f.invoke("approve", {object_id,expected_revision:3,command:{note:"审核通过"}}, "reviewer")).status, 200);
+  for (let index=0;index<4;index++) await f.pump();
+  assert.deepEqual(f.events.map(event => event.revision), [1,2,3,4]);
+  assert.deepEqual(f.events.map(event => event.state), ["draft","draft","submitted","approved"]);
+  assert.ok(f.events.every(event => event.kind === "state.changed" && event.scope.organization_id === "O" && event.scope.project_id === "P"));
+  assert.equal(f.pulls, 0); // No handler means this module never claims messages.
+  const db = new DatabaseSync(f.filename, {readOnly:true});
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM kit_receipts").get().n, 4);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM duoflow_coord_outbox").get().n, 4);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM duoflow_coord_outbox WHERE sent=1").get().n, 4);
+  db.close();
+  await f.restart();
+  await f.pump();
+  assert.equal(f.events.length, 4);
+});
+
+test("empty coordination declarations remain inactive even when a credential file is configured", async t => {
+  const f = await fixture(t,{credentialOnly:true});
+  assert.equal((await f.create()).status,200);
+  assert.deepEqual(await f.pump(),{enabled:false});
+  assert.equal(f.events.length,0);
+  assert.equal(f.pulls,0);
+  const db = new DatabaseSync(f.filename,{readOnly:true});
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name='duoflow_coord_outbox'").get().n,0);
+  db.close();
+});
+
+test("business, outbox and receipt roll back together after an enqueue failure", async t => {
+  const directory = mkdtempSync(path.join(tmpdir(), "module-kit-coordination-"));
+  const filename = path.join(directory, "records.sqlite");
+  const c = new CoordinationClient({baseUrl:"http://127.0.0.1:19090/api/v1/coordination",token:"synthetic-coordination-module-token",moduleId:M,consumerId:M+".worker",scopes:[{organization_id:"O",project_id:"P"}],fetchImpl:async()=>{ throw Error("No network in the business transaction"); }});
+  const original = c.enqueue.bind(c);
+  c.enqueue = (db, event) => { original(db,event); throw Error("synthetic failure after outbox insertion"); };
+  const business = createBusiness({filename,projects,decide:async()=>({allowed:true,policy_revision:1}),coordination:{
+    client:c,declaration:{version:"1.0",machines:[{id:stateMachine.id,object_types:[`${M}.record`],states:stateMachine.states.map(state=>state.id),public_states:[],approval_required:false}],emits:["state.changed"],accepts:[]},
+  }});
+  t.after(async()=>{ await business.close(); rmSync(directory,{recursive:true,force:true}); });
+  await assert.rejects(business.invoke({body:{protocol_version:"1.1",request_id:id(),capability_id:M+".create",capability_version:"1.0.0",input:{command:{project_id:"P",title:"原子保存",body:""}},context:{actor:actor("author")}},ticket:"synthetic-ticket"}), /synthetic failure after outbox insertion/);
+  const db = new DatabaseSync(filename,{readOnly:true});
+  for (const table of ["records","kit_receipts","duoflow_coord_outbox"])
+    assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n, 0);
+  db.close();
+});
+
+test("coordination pump uses the same business database and only explicit handlers apply received messages", async t => {
+  const incoming = {id:"incoming-delivery",subscription_id:"neighbor-notify",target_module:M,mode:"notify",consumer_id:M+".worker",lease_token:"synthetic-delivery-lease-token",lease_until:9999999999,attempts:1,
+    event:{version:"1.0",event_id:"neighbor-event",module_id:"neighbor.data",kind:"state.changed",machine_id:"neighbor.data.catalog",object_ref:{object_type:"neighbor.data.record",object_id:"neighbor-object"},state:"available",revision:3,scope:{organization_id:"O",project_id:"P"}}};
+  let effects = 0;
+  const f = await fixture(t,{coordinated:true,incoming,coordinationHandler:(db,event)=>{
+    assert.equal(db.isTransaction,true);
+    db.exec("CREATE TABLE IF NOT EXISTS neighbor_hints(object_id TEXT PRIMARY KEY,revision INTEGER)");
+    db.prepare("INSERT INTO neighbor_hints VALUES (?,?)").run(event.object_ref.object_id,event.revision);
+    effects++;
+  }});
+  const created = await f.create(), object_id = created.body.data.projection.object_ref.object_id;
+  const replies = await Promise.all([f.pump(),f.invoke("edit",{object_id,expected_revision:1,command:{title:"并行编辑甲",body:""}}),f.invoke("edit",{object_id,expected_revision:1,command:{title:"并行编辑乙",body:""}})]);
+  assert.deepEqual(replies.slice(1).map(reply=>reply.status).sort(),[200,409]);
+  await f.pump();
+  assert.equal(effects,1);
+  assert.equal(f.acknowledgements.length,1);
+  const db = new DatabaseSync(f.filename,{readOnly:true});
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM duoflow_coord_inbox").get().n,1);
+  assert.equal(db.prepare("SELECT revision FROM neighbor_hints").get().revision,3);
+  assert.equal(db.prepare("SELECT revision FROM records").get().revision,2);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM duoflow_coord_outbox").get().n,2);
+  db.close();
+});
+
+for (const unavailable of [false,true]) test(`coordination ${unavailable ? "unavailability" : "slow HTTP"} leaves ordinary reads and edits responsive`, async t => {
+  const f = await fixture(t,{coordinated:true,coordinationDelayMilliseconds:800,coordinationUnavailable:unavailable});
+  let object_id;
+  for (let index=0;index<5;index++) {
+    const response = await f.create("并行对象"+index);
+    assert.equal(response.status,200);
+    object_id ??= response.body.data.projection.object_ref.object_id;
+  }
+  const pumping=f.pump();
+  await f.firstEvent;
+  const started=performance.now();
+  const replies=await Promise.all([f.invoke("read",{object_id}),f.invoke("edit",{object_id,expected_revision:1,command:{title:"继续办理",body:""}})]);
+  const elapsed=performance.now()-started;
+  assert.deepEqual(replies.map(reply=>reply.status),[200,200]);
+  assert.ok(elapsed<700,`ordinary requests waited ${Math.round(elapsed)}ms for the coordination network`);
+  const result=await pumping;
+  assert.equal(result.relay[unavailable?"failed":"sent"],5);
+  const db=new DatabaseSync(f.filename,{readOnly:true});
+  assert.equal(db.prepare("SELECT revision FROM records WHERE id=?").get(object_id).revision,2);
+  if(unavailable) assert.equal(db.prepare("SELECT COUNT(*) AS n FROM duoflow_coord_outbox WHERE sent=0").get().n,6);
+  db.close();
+});
+
+test("a business writer defers coordination consumption without waiting, then inbox and effect commit together",async t=>{
+  const incoming={id:"deferred-delivery",subscription_id:"neighbor-notify",target_module:M,mode:"notify",consumer_id:M+".worker",lease_token:"synthetic-delivery-lease-token",lease_until:9999999999,attempts:1,
+    event:{version:"1.0",event_id:"deferred-event",module_id:"neighbor.data",kind:"state.changed",machine_id:"neighbor.data.catalog",object_ref:{object_type:"neighbor.data.record",object_id:"neighbor-object"},state:"available",revision:3,scope:{organization_id:"O",project_id:"P"}}};
+  let effects=0, handlerFile;
+  const f=await fixture(t,{coordinated:true,incoming,incomingReady:false,coordinationHandler:(db,event)=>{
+    handlerFile=db.prepare("PRAGMA database_list").all().find(database=>database.name==="main").file;
+    db.exec("CREATE TABLE IF NOT EXISTS consumed_hints(object_id TEXT PRIMARY KEY,revision INTEGER)");
+    db.prepare("INSERT INTO consumed_hints VALUES (?,?)").run(event.object_ref.object_id,event.revision);
+    effects++;
+  }});
+  const created=await f.create(),object_id=created.body.data.projection.object_ref.object_id;
+  await f.pump();
+  const gate=f.holdNextEditCommit();
+  const editing=f.invoke("edit",{object_id,expected_revision:1,command:{title:"保持写事务",body:""}});
+  try {
+    await gate.entered;
+    f.enableIncoming();
+    const started=performance.now(),result=await f.pump();
+    assert.ok(performance.now()-started<700,"consumer waited for the business database write lock");
+    assert.equal(result.failed,1);
+    assert.equal(effects,0);
+    assert.equal(f.acknowledgements.length,0);
+    const db=new DatabaseSync(f.filename,{readOnly:true});
+    assert.equal(db.prepare("SELECT COUNT(*) AS n FROM duoflow_coord_inbox").get().n,0);db.close();
+  } finally { gate.release(); }
+  assert.equal((await editing).status,200);
+  await f.pump();
+  assert.equal(effects,1);assert.equal(f.acknowledgements.length,1);
+  assert.equal(path.resolve(handlerFile),path.resolve(f.filename));
+  const db=new DatabaseSync(f.filename,{readOnly:true});
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM duoflow_coord_inbox").get().n,1);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM consumed_hints").get().n,1);db.close();
 });

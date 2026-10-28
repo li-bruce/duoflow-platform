@@ -17,6 +17,8 @@ description: 为 DuoFlow 新建或改造业务模块，使用 business-observer 
 
 ## 实现与接入
 
+首次 begin 前执行 `observer_bridge.py preflight --module <模块>` 检查映射计划/已有基线结构；这不等于 runtime coverage 或同步通过。若固定上游曾接受不完整初稿，保留原基线和失败，按稳定诊断报告，禁止通过重置或修改受保护基线隐藏问题。完整联合 gate 仍须单独通过。
+
 1. 从仓库根运行 `scripts/module_kit.py scaffold --help`。一次处理得到结果采用 tool-python；正式对象流程可从 workflow-node 开始。已有 Python 远程流程按适配说明接入，保留专业业务库。
 2. 用 `observer_bridge.py init --module <模块> --source <Observer仓库>` 安装固定版本的状态查询、观测和图组件。按 Observer 建立 discovery.json、intent.json、behavior.json、sync.json、独立业务预期、探针和架构归属。复制支持文件不代表业务模型已经完成。
    第一轮 begin 前核对 docs/OBSERVER.md 的材料表：扫描项目根、bo-implementation/v1 功能与参数清单、discovery.model_nodes、实际存在且被跟踪的 observations_command、ownership.json。前端 JSX 事件入口也要登记；动态探针绑定给出真实静态位置和实际执行场景。后端以独立存储快照核验状态，前端以实际组件操作核验宿主效果，观察开关和故障保持业务结果一致。
@@ -28,6 +30,8 @@ description: 为 DuoFlow 新建或改造业务模块，使用 business-observer 
    新远程模块使用 registration 1.1，完整附件与 module-graph.json、flow-exports.json 保持一致。握手主动回调平台运行同步接口，通过实际挑战后才确认 runtime_callback。后端在实际处理完成或提交后报告状态；前端观察只反映界面状态。分别测试观察接口失效、乱序、重复、当前撤权和对象撤权，观察故障不改变业务结果。
 
 ## 完成标准
+
+业务使用AI时，在 `registration.ai_services` 声明实际服务及关联能力，按 `docs/模块AI服务与配置.md` 和 `contracts/ai/v1/` 使用同批Python/Node AIServiceManager。模块独立运行可配置自有API；接入后由平台管理员逐服务显式选择平台或模块连接，不静默fallback。密钥不进入声明/前端/业务回执；用可信scope调用，并在最终提交前复验返回的route、当前权限与配置修订。分别验证两个来源和切换，保持模型候选的领域校验与原审核，未用AI的模块无需占位声明。
 
 交付模块源码、清晰目录说明、主要函数注释、公开协议、业务模型、映射和验证入口。分别报告结构/映射检查、业务行为、观测隔离、双端办理和平台注册结果；未执行项保持未验证。主框架 composition 1.0 支持顺序组合、明确字段传递、人工办理等待和实际运行图。模块提供自身入口、完成条件和可重新授权的对象读取接口；循环、通用条件分支和自动补偿保持未实现。组合场景应实测来源授权、目标权限、版本变化和中断后的凭据恢复。
 

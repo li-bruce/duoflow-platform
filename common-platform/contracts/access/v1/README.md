@@ -21,3 +21,9 @@ Python 模块使用 `ctx.access.check(ctx.actor, permission, trusted_facts)`；N
 `command_mappings.command` 用于字符串子命令选择器。workflow v1 的 `input.command` 是结构化事务信封，应为每个具体能力配置无 command 的权限映射；结构化信封不会被当作子命令名称。未知字符串子命令拒绝，不能回退到普通能力权限；同一个能力不能混合无条件映射和字符串子命令映射。
 
 开源资料：[Casbin 域内 RBAC](https://casbin.apache.org/docs/rbac-with-domains/)、[PyCasbin](https://github.com/apache/casbin-pycasbin)。
+# Optional cross-module source reads
+
+See [registered source object reads 1.0](source-reads.md) and
+`source-read-request.schema.json`. A target ticket stays bound to its own call;
+the platform obtains fresh source authorization through registered read-only
+object adapters. This does not add long-task delegation or shared storage.

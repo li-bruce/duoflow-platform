@@ -17,6 +17,14 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 
 
+class ObserverInputError(ValueError):
+    """Stable preflight diagnosis; never repair or replace protected baselines."""
+
+    def __init__(self, code):
+        super().__init__(code)
+        self.code = code
+
+
 def read(path):
     return json.loads(path.read_text(encoding="utf-8-sig"))
 
@@ -232,11 +240,49 @@ def check_sync_inputs(module, definition):
             )
 
 
+def preflight(module):
+    """Reject malformed current/protected mapping plans before upstream commands.
+
+    This is a shape check, not source/runtime coverage or sync acceptance. It
+    exists because the pinned upstream begin can save an incomplete plan which
+    later raises KeyError while comparing protected coverage.
+    """
+    config = read(inside(module, "sync.json"))
+    required = config.get("require_mapping_witnesses") is True
+
+    def plan(value, prefix):
+        if not isinstance(value, dict) or value.get("schema") != "bo-mapping/v1":
+            raise ObserverInputError(prefix + "_schema")
+        for field in ("cases", "modes", "fields", "actual_collection", "actual_id"):
+            if not isinstance(value.get(field), list) or not value[field]:
+                raise ObserverInputError(prefix + "_" + field)
+        if not value.get("source") or not isinstance(value.get("export"), dict):
+            raise ObserverInputError(prefix + "_binding")
+
+    relative = config.get("mapping_contract")
+    if required or relative:
+        if not isinstance(relative, str) or not relative:
+            raise ObserverInputError("observer_mapping_plan_missing")
+        plan(read(inside(module, relative)), "observer_mapping_plan")
+    active = module / config.get("active_change", ".stategraph/active.json")
+    if active.exists():
+        document = read(inside(module, active.relative_to(module).as_posix()))
+        change = document.get("change")
+        if not isinstance(change, str) or not change:
+            raise ObserverInputError("observer_active_change_invalid")
+        baseline = read(inside(module, change + "/baseline.json"))
+        if required or baseline.get("mapping_contract"):
+            plan(baseline.get("mapping_contract"), "observer_baseline_mapping")
+    return {"status": "preflight_passed", "checks": ["mapping_plan_shape", "active_baseline_shape"],
+            "runtime_evidence": "not_checked", "sync_acceptance": "not_checked"}
+
+
 def gate(module, source, mapping):
     """Run module checks, source checks and the upstream evidence gate together."""
     source_check(source)
     definition = check_mapping(module, mapping)
     check_sync_inputs(module, definition)
+    preflight(module)
     subprocess.run(
         [sys.executable, str(ROOT / "scripts/module_kit.py"), "check", str(module)],
         check=True,
@@ -289,6 +335,7 @@ def gate(module, source, mapping):
             "observer_source",
             "business_mapping",
             "sync_inputs",
+            "mapping_preflight",
             "requirements",
             "change_sync",
             "architecture",
@@ -299,13 +346,13 @@ def gate(module, source, mapping):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("source", "init", "mapping", "gate"))
+    parser.add_argument("command", choices=("source", "init", "mapping", "preflight", "gate"))
     parser.add_argument("--source", type=Path)
     parser.add_argument("--module", type=Path)
     parser.add_argument("--mapping", default="duoflow-observer.json")
     args = parser.parse_args()
     try:
-        if args.command != "mapping" and not args.source:
+        if args.command not in {"mapping", "preflight"} and not args.source:
             raise ValueError("--source is required")
         if args.command != "source" and (not args.module or not args.module.is_dir()):
             raise ValueError("--module must identify an existing module")
@@ -317,6 +364,8 @@ def main():
         elif args.command == "mapping":
             check_mapping(module, args.mapping)
             result = {"status": "mapped", "runtime_evidence": "not_checked"}
+        elif args.command == "preflight":
+            result = preflight(module)
         else:
             result = gate(module, args.source.resolve(), args.mapping)
         print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -325,7 +374,8 @@ def main():
         # Raw subprocess output may contain local paths or application inputs.
         print(
             json.dumps(
-                {"status": "failed", "error_type": type(error).__name__},
+                {"status": "failed", "error_type": type(error).__name__,
+                 **({"error_code": error.code} if isinstance(error, ObserverInputError) else {})},
                 ensure_ascii=False,
             )
         )

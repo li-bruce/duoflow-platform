@@ -20,7 +20,9 @@ jobs:
       - run: npm ci
         working-directory: common-platform/web
       - run: python scripts/build_module_developer_prompt.py --check
+      - run: python scripts/build_coordination_contract.py --check
       - run: mkdir -p ../work/pytest && PLATFORM_DATA_DIR=../work/test-data python -m pytest tests templates/module-kit/sdk/python/tests -q --basetemp ../work/pytest/run
       - run: npm test && npm run build
         working-directory: common-platform/web
+      - run: node --test templates/module-kit/sdk/node/tests/test_coordination.mjs
       - run: python scripts/build_handbooks.py --check

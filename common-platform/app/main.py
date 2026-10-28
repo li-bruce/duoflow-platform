@@ -103,8 +103,16 @@ def create_app(data_dir: Path | None = None, start_worker=True, gateway=None, re
     engine, sessions = create_database(data_dir)
     seed_users(sessions, data_dir=data_dir)
     gateway = gateway or ModelGateway(data_dir)
-    remote_services = remote_services or RemoteServiceManager(data_dir)
+    if remote_services is None:
+        remote_services = RemoteServiceManager(data_dir)
+        from .monitor_client import AggregateMonitorClient
+
+        remote_services._monitor = AggregateMonitorClient(data_dir, remote_services)
     runtime = Runtime(ROOT, sessions, gateway, remote_services, data_dir=data_dir)
+    from .coordination_client import CoordinationClient
+    from .coordination_routes import create_coordination_router
+
+    coordination = CoordinationClient(data_dir, remote_services)
     agent_engine = AgentEngine(runtime, data_dir)
     conversation = ConversationService(runtime, agent_engine=agent_engine)
 
@@ -113,16 +121,32 @@ def create_app(data_dir: Path | None = None, start_worker=True, gateway=None, re
         conversation.recover_incomplete()
         monitor_stop = asyncio.Event()
         monitor_task = None
+        coordination_task = None
+
+        async def coordinate_registry():
+            while not monitor_stop.is_set():
+                try:
+                    await coordination.reconcile()
+                except PlatformError:
+                    pass  # The admin view reports unavailable; business events stay in module outboxes.
+                try:
+                    await asyncio.wait_for(monitor_stop.wait(), timeout=5)
+                except asyncio.TimeoutError:
+                    pass
+
         if start_worker:
             await runtime.start()
             await runtime.compositions.start()
             monitor_task = asyncio.create_task(remote_services.monitor_loop(monitor_stop))
+            coordination_task = asyncio.create_task(coordinate_registry())
         try:
             yield
         finally:
             monitor_stop.set()
             if monitor_task:
                 await monitor_task
+            if coordination_task:
+                await coordination_task
             if start_worker:
                 await runtime.compositions.stop()
                 await runtime.stop()
@@ -144,6 +168,10 @@ def create_app(data_dir: Path | None = None, start_worker=True, gateway=None, re
         gateway,
     )
     app.state.remote_services = remote_services
+    from .ai_services import AIServices
+
+    ai_services = AIServices(runtime)
+    app.state.ai_services = ai_services
     app.state.agent_engine = agent_engine
     app.add_middleware(
         TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "[::1]", "testserver"]
@@ -212,23 +240,22 @@ def create_app(data_dir: Path | None = None, start_worker=True, gateway=None, re
         # Management uses a secret-input channel rather than recording plaintext invocation input.
         if (
             request.url.path.startswith(
-                ("/api/v1/models", "/api/v1/remote-services", "/api/v1/modules")
+                ("/api/v1/models", "/api/v1/remote-services", "/api/v1/modules", "/api/v1/ai-services", "/api/v1/coordination")
             )
-            and request.method in ("POST", "DELETE")
+            and request.method in ("POST", "PUT", "DELETE")
             and response.status_code < 400
         ):
             try:
                 actor = require_user(request)
                 with sessions.begin() as db:
-                    category = (
-                        "modules"
-                        if request.url.path.startswith("/api/v1/modules")
-                        else (
-                            "services"
-                            if request.url.path.startswith("/api/v1/remote-services")
-                            else "models"
-                        )
-                    )
+                    if request.url.path.startswith("/api/v1/modules"):
+                        category = "modules"
+                    elif request.url.path.startswith("/api/v1/remote-services"):
+                        category = "services"
+                    elif request.url.path.startswith("/api/v1/ai-services"):
+                        category = "ai-services"
+                    else:
+                        category = "models"
                     audit(
                         db,
                         actor["id"],
@@ -461,6 +488,8 @@ def create_app(data_dir: Path | None = None, start_worker=True, gateway=None, re
             actor = refresh_actor(db, actor)
             return {"items": runtime.audit_data(db, actor)}
 
+    app.state.coordination = coordination
+    app.include_router(create_coordination_router(coordination, runtime, require_admin, check_csrf))
     app.include_router(create_conversation_router(conversation, require_user, check_csrf))
     app.include_router(create_interaction_router(runtime.interactions, require_user, check_csrf))
     app.include_router(create_workflow_router(runtime.workflows, require_user, check_csrf))
@@ -473,6 +502,9 @@ def create_app(data_dir: Path | None = None, start_worker=True, gateway=None, re
     from .access_bridge import create_access_bridge_router
 
     app.include_router(create_access_bridge_router(runtime.access_bridge))
+    from .source_reads import SourceReads, create_source_read_router
+
+    app.include_router(create_source_read_router(SourceReads(runtime)))
     from .runtime_observation import create_observation_router
 
     app.include_router(create_observation_router(runtime.observations, require_user))
@@ -499,6 +531,9 @@ def create_app(data_dir: Path | None = None, start_worker=True, gateway=None, re
     app.include_router(
         create_model_router(gateway, require_admin, require_user, check_csrf), prefix="/api/v1"
     )
+    from .ai_routes import create_ai_router
+
+    app.include_router(create_ai_router(ai_services, require_admin, check_csrf))
     app.include_router(
         create_remote_router(remote_services, runtime, require_admin, check_csrf), prefix="/api/v1"
     )

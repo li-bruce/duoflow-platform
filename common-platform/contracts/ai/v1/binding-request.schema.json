@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "expected_revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source": {
+      "enum": [
+        "disabled",
+        "platform",
+        "module"
+      ]
+    },
+    "platform_profile_id": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,80}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "expected_revision",
+    "source",
+    "platform_profile_id"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "source": {
+            "const": "platform"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "platform_profile_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,80}$"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "platform_profile_id": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ]
+}

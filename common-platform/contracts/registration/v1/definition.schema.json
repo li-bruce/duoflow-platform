@@ -263,6 +263,188 @@
       },
       "maxItems": 16,
       "uniqueItems": true
+    },
+    "ai_services": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]{2,119}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "capability_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_.-]{2,119}$"
+            }
+          },
+          "supported_sources": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 2,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "platform",
+                "module"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "capability_ids",
+          "supported_sources"
+        ]
+      }
+    },
+    "coordination": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": "1.0"
+        },
+        "machines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160,
+                "pattern": "^[a-zA-Z][a-zA-Z0-9_.-]{0,159}$"
+              },
+              "object_types": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 3,
+                  "maxLength": 120,
+                  "pattern": "^[a-z][a-z0-9_.-]{2,119}$"
+                },
+                "minItems": 1,
+                "maxItems": 32,
+                "uniqueItems": true
+              },
+              "states": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z][a-zA-Z0-9_.-]{0,127}$"
+                },
+                "minItems": 1,
+                "maxItems": 100,
+                "uniqueItems": true
+              },
+              "public_states": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z][a-zA-Z0-9_.-]{0,127}$"
+                },
+                "minItems": 0,
+                "maxItems": 100,
+                "uniqueItems": true
+              },
+              "approval_required": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "object_types",
+              "states",
+              "public_states",
+              "approval_required"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0,
+          "maxItems": 32,
+          "uniqueItems": true
+        },
+        "emits": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "state.changed",
+              "publication.requested",
+              "resource.published",
+              "resource.withdrawn"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 4,
+          "uniqueItems": true
+        },
+        "accepts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_module": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 120,
+                "pattern": "^[a-z][a-z0-9_.-]{2,119}$"
+              },
+              "kind": {
+                "enum": [
+                  "state.changed",
+                  "resource.published",
+                  "resource.withdrawn"
+                ]
+              },
+              "mode": {
+                "enum": [
+                  "notify",
+                  "sync"
+                ]
+              }
+            },
+            "required": [
+              "source_module",
+              "kind",
+              "mode"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0,
+          "maxItems": 128,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "version",
+        "machines",
+        "emits",
+        "accepts"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [

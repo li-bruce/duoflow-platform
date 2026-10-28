@@ -26,6 +26,8 @@ QUICK_PROMPT_PATH = Path("prompts/模块开发快速提示词.md")
 # New/deleted files under these roots also invalidate the recorded fingerprint.
 SOURCE_TREES = {
     "app": {".py"},
+    "monitoring_service": {".py"},
+    "coordination_service": {".py"},
     "web/src": {".ts", ".tsx", ".css"},
     "templates": {".py", ".json", ".md", ".ps1", ".ts", ".tsx", ".mjs"},
     "components": {".json", ".ts", ".tsx", ".css", ".md"},
@@ -44,6 +46,8 @@ SOURCE_FILES = (
     "scripts/build_duoflow_repositories.py",
     "scripts/module_graph_template.py",
     "scripts/flow_exports_template.py",
+    "scripts/monitor_service.py", "scripts/build_monitor_contract.py",
+    "scripts/coordination_service.py", "scripts/build_coordination_contract.py",
 )
 EXCLUDED_PARTS = {"data", "logs", "node_modules", "__pycache__", ".venv", ".git", "dist"}
 
@@ -150,6 +154,7 @@ def build_snapshot(root: Path) -> dict:
                    and isinstance(n.func, ast.Name) and n.func.id == "FastAPI"
                    for k in n.keywords if k.arg == "version"), "platform version")
     monitor = named_class(tree(root, "app/service_monitor.py"), "ServiceMonitor")
+    monitor_client = named_class(tree(root, "app/monitor_client.py"), "AggregateMonitorClient")
     remote = named_class(tree(root, "app/remote_services.py"), "RemoteServiceManager")
     timeout = one((n for n in remote.body if isinstance(n, ast.FunctionDef) and n.name == "_timeout"), "timeout")
     timeout_limit = one((literal(n.args[2]) for n in ast.walk(timeout) if isinstance(n, ast.Call)
@@ -261,6 +266,8 @@ def build_snapshot(root: Path) -> dict:
             "identity_policy": json.loads(read(root, 'config/identity-policy.json')),
             "heartbeat": {name.lower(): assignment(monitor, name) for name in (
                 "INTERVAL_SECONDS", "TIMEOUT_SECONDS", "STALE_AFTER_SECONDS", "FAILURE_THRESHOLD", "MAX_CONCURRENCY")},
+            "monitor_summary": {name.lower(): assignment(monitor_client, name) for name in (
+                "INTERVAL_SECONDS", "STALE_AFTER_SECONDS")},
             "limits": {"request_bytes": assignment(workspace, "MAX_INVOKE_BYTES"),
                        "manifest_bytes": assignment(remote, "_MAX_MANIFEST"),
                        "response_bytes": assignment(workspace, "MAX_WORKSPACE_RESPONSE_BYTES"),
@@ -354,6 +361,12 @@ def access_appendix(snapshot, root: Path = ROOT):
     for name, schema in sorted(snapshot['access_contracts'].items()):
         text += block('contracts/' + name, schema)
     text += block('Access v1 执行与兼容边界', read(root, 'contracts/access/v1/README.md'), 'markdown')
+    text += block('AI services v1 声明、配置与调用边界', read(root, 'contracts/ai/v1/README.md'), 'markdown')
+    for ai_schema in sorted((root / 'contracts/ai/v1').glob('*.schema.json'), key=lambda p: p.as_posix()):
+        text += block(ai_schema.relative_to(root).as_posix(), json.loads(read(root, ai_schema.relative_to(root))))
+    text += block('独立技术监控v1', read(root, 'contracts/monitoring/v1/README.md'), 'markdown')
+    for monitor_schema in sorted((root / 'contracts/monitoring/v1').glob('*.schema.json'), key=lambda p: p.as_posix()):
+        text += block(monitor_schema.relative_to(root).as_posix(), json.loads(read(root, monitor_schema.relative_to(root))))
     for title, name in [('合成权限附件 access-definition.json', 'definition'), ('合成管理授权请求（不随安装执行）', 'binding')]:
         text += block(title, snapshot['examples']['access'][name])
     text += block('当前管理、业务中心与桥接路由', {key: access[key] for key in ('management_routes', 'business_routes', 'remote_decision_routes')})
@@ -412,13 +425,13 @@ def appendix(snapshot, root: Path = ROOT):
 | UTF-8 文本产物最大字节数 | {limits['text_artifact_bytes']:,} |
 | platform-file / 下载 / 图片单件最大字节数 | {limits['file_bytes']:,} |
 | 远程调用配置超时上限（秒） | {limits['invoke_timeout_seconds']} |
-| 后台探测间隔（秒） | {h['interval_seconds']} |
+| 独立监控服务探测间隔（秒） | {h['interval_seconds']} |
 | 单次健康探测超时（秒） | {h['timeout_seconds']} |
 | 连续失败达到离线的次数 | {h['failure_threshold']} |
 | 距最近完成探测达到过期的秒数 | 超过 {h['stale_after_seconds']} |
 | 健康探测最大并发 | {h['max_concurrency']} |
 
-健康状态为 unknown/healthy/degraded/offline/stale；一次成功清零连续失败。unknown/degraded 允许显式调用，offline/stale 阻止新执行；停用和健康相互独立。前端关闭不影响后台探测；运行时监测状态保存在进程中，重启后重新探测。该实现仍是单进程参考平台，不是跨节点高可用注册中心。
+健康状态为 unknown/healthy/degraded/offline/stale；一次成功清零连续失败。unknown/degraded 允许显式调用，offline/stale 阻止新执行；停用和健康相互独立。探测在独立监控进程进行，主API仅以{f['monitor_summary']['interval_seconds']}秒周期读取汇总；汇总超过{f['monitor_summary']['stale_after_seconds']}秒过期，监控故障显示unknown而不制造全服务offline。主平台停止后独立监控可继续运行；监控自身重启后健康重新探测。它不构成跨节点高可用注册中心。模块负载报告直接进入独立服务；正式业务授权及业务观察票据的核验保持原通道。
 
 修改连接会撤下原能力并要求重新发现/发布。清单变更须重新发布；相同清单发现和失败的发现不自动撤销原发布。任务固定连接修订和能力版本，停用或修订变化后旧任务不会切换新目标。取消本地等待不保证远端停止。
 

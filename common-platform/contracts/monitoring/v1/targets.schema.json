@@ -1,0 +1,72 @@
+{
+  "$defs": {
+    "Target": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-z][a-z0-9_.-]{1,79}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "base_url": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "title": "Base Url",
+          "type": "string"
+        },
+        "token": {
+          "maxLength": 4096,
+          "title": "Token",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "base_url",
+        "token"
+      ],
+      "title": "Target",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "monitor_version": {
+      "const": "1.0",
+      "title": "Monitor Version",
+      "type": "string"
+    },
+    "owner_id": {
+      "pattern": "^[a-f0-9]{32}$",
+      "title": "Owner Id",
+      "type": "string"
+    },
+    "expected_revision": {
+      "minimum": 0,
+      "title": "Expected Revision",
+      "type": "integer"
+    },
+    "targets": {
+      "items": {
+        "$ref": "#/$defs/Target"
+      },
+      "maxItems": 256,
+      "title": "Targets",
+      "type": "array"
+    }
+  },
+  "required": [
+    "monitor_version",
+    "owner_id",
+    "expected_revision",
+    "targets"
+  ],
+  "title": "Targets",
+  "type": "object"
+}

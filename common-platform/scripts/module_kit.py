@@ -142,10 +142,16 @@ def scaffold(template, module_id, title, output, pack_name=None):
             (source, Path(".")),
             (KIT / "sdk" / TEMPLATES[template][1], Path("sdk") / TEMPLATES[template][1]),
             (KIT / "sdk/frontend", Path("sdk/frontend")),
+            (KIT / "examples/ai-services", Path("examples/ai-services")),
         ):
             need(base.is_dir(), "模板 SDK 缺失。")
             for path in sorted(base.rglob("*")):
                 rel = path.relative_to(base)
+                if prefix == Path("examples/ai-services") and (
+                    path.name == "standalone-node.mjs" and template != "workflow-node"
+                    or path.name == "standalone-python.py" and template != "tool-python"
+                ):
+                    continue
                 if (
                     any(part in IGNORED for part in rel.parts)
                     or prefix.parts[0:1] == ("sdk",)
@@ -232,7 +238,7 @@ def _imports():
     )
 
 
-def frontend_exports(path):
+def frontend_exports(path, *, dependencies_only=False):
     """Parse, never import or evaluate, supplier TSX with the host TypeScript AST.
 
     Workflow references require a statically declared literal stepComponents map.
@@ -255,7 +261,16 @@ def frontend_exports(path):
 const fs=require('node:fs'), ts=require(process.argv[1]);
 const source=ts.createSourceFile(process.argv[2],fs.readFileSync(process.argv[2],'utf8'),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 if(source.parseDiagnostics.length) throw new Error('Invalid TSX');
-let hasDefault=false, names=null;const declarations=new Set();
+let hasDefault=false, names=null;const declarations=new Set(), imports=[];let dynamic=false;
+function dependencies(node){
+  if((ts.isImportDeclaration(node)||ts.isExportDeclaration(node))&&node.moduleSpecifier&&ts.isStringLiteral(node.moduleSpecifier))imports.push(node.moduleSpecifier.text);
+  if(ts.isCallExpression(node)&&node.expression.kind===ts.SyntaxKind.ImportKeyword){
+    if(node.arguments.length===1&&ts.isStringLiteral(node.arguments[0]))imports.push(node.arguments[0].text);else dynamic=true;
+  }
+  ts.forEachChild(node,dependencies);
+}
+dependencies(source);
+if(process.argv[3]==='dependencies'){process.stdout.write(JSON.stringify({imports,dynamic}));process.exit(0);}
 for(const statement of source.statements){
   if((ts.isFunctionDeclaration(statement)&&statement.body||ts.isClassDeclaration(statement))&&statement.name&&ts.isIdentifier(statement.name))declarations.add(statement.name.text);
   if(ts.isVariableStatement(statement))for(const d of statement.declarationList.declarations)if(ts.isIdentifier(d.name)&&d.initializer)declarations.add(d.name.text);
@@ -287,10 +302,10 @@ for(const statement of source.statements){
     }
   }
 }
-process.stdout.write(JSON.stringify({default:hasDefault,components:names}));
+process.stdout.write(JSON.stringify({default:hasDefault,components:names,imports,dynamic}));
 """
     completed = subprocess.run(
-        [node, "-e", parser, str(typescript), str(path)],
+        [node, "-e", parser, str(typescript), str(path), "dependencies" if dependencies_only else "exports"],
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -304,10 +319,57 @@ process.stdout.write(JSON.stringify({default:hasDefault,components:names}));
     return json.loads(completed.stdout)
 
 
+def frontend_package_files(package):
+    """Resolve the shipped host entrypoints' local imports without executing code.
+
+    Assets and helper sources must stay in frontend/. Standalone previews are
+    not dependencies of the production entries and are not installed implicitly.
+    Host typechecking and production/browser acceptance remain separate checks.
+    """
+    root = unredirected(Path(package)).resolve()
+    front = root / "frontend"
+    pending = [front / name for name in ("steps.tsx", "Component.tsx", "flow.json", "interaction.json")
+               if (front / name).is_file()]
+    seen = set()
+    suffixes = (".ts", ".tsx", ".js", ".jsx", ".json", ".css", ".svg", ".png", ".jpg", ".webp")
+    while pending:
+        path = unredirected(pending.pop()).resolve()
+        need(path.is_relative_to(front), "共享前端依赖必须随 frontend 包携带，不能引用包外文件。")
+        file_in(root, path.relative_to(root).as_posix())
+        if path in seen:
+            continue
+        seen.add(path)
+        references = []
+        if path.suffix in {".ts", ".tsx", ".js", ".jsx"}:
+            parsed = frontend_exports(path, dependencies_only=True)
+            need(not parsed["dynamic"], "共享前端动态 import 必须使用可静态定位的包内字符串路径。")
+            references = parsed["imports"]
+        elif path.suffix == ".css":
+            text = path.read_text(encoding="utf-8-sig")
+            references = [next(part for part in match if part) for match in re.findall(
+                r'''@import\s+["']([^"']+)["']|url\(\s*["']?([^\s"')]+)["']?\s*\)''', text
+            )]
+        for reference in references:
+            if reference.startswith(("http:", "https:", "data:", "#")):
+                continue
+            if not reference.startswith(".") and path.suffix != ".css":
+                continue
+            need("?" not in reference and "#" not in reference, "包内资源引用暂不支持查询参数或片段。")
+            value = unredirected(path.parent / reference)
+            need(value.resolve().is_relative_to(front), "共享前端依赖必须随 frontend 包携带，不能引用包外文件。")
+            candidates = [value, *(Path(str(value) + suffix) for suffix in suffixes),
+                          *(value / ("index" + suffix) for suffix in suffixes)]
+            found = next((candidate for candidate in candidates if candidate.is_file()), None)
+            need(found is not None, "共享前端引用的包内依赖文件不存在。")
+            pending.append(found)
+    return sorted(path.relative_to(root).as_posix() for path in seen)
+
+
 def check(package):
     """核对模块协议、权限、共享组件和引用，全程不导入供应商业务函数。"""
     root = unredirected(Path(package)).resolve()
     need(root.is_dir(), "模块包目录不存在。")
+    packaged_frontend = frontend_package_files(root)
     meta = read_json(root, "module-kit.json")
     need(
         isinstance(meta, dict)
@@ -371,6 +433,11 @@ def check(package):
             validate_registration(registration, manifest)
         except Exception as exc:
             raise KitError("注册声明不符合当前接入标准。") from exc
+        # Optional AI declarations belong to registration, never to a credential
+        # file or capability input. Runtime binding is checked by each SDK.
+        if registration.get("ai_services"):
+            file_in(root, "sdk/node/ai-service.mjs" if meta["runtime"] == "node"
+                    else "sdk/python/ai_service.py")
         need(
             registration["permissions"] == {"mode": "platform_access", "definition": access},
             "注册声明必须包含同一份权限定义。",
@@ -702,6 +769,7 @@ def check(package):
         "capabilities": len(caps),
         "permissions": len(permissions),
         "frontend_ids": frontend_ids,
+        "frontend_files": packaged_frontend,
         "module_graph_checked": graph_checked,
         "checks": [
             "manifest",
@@ -729,12 +797,16 @@ def main(argv=None):
     generate.add_argument("--output", type=Path, required=True)
     validate = commands.add_parser("check", help="只读检查生成包或按相同布局接入的现有服务")
     validate.add_argument("package", type=Path)
+    validate.add_argument("--frontend-only", action="store_true", help="只核对共享前端生产依赖闭包，不导入后端契约或业务代码")
     args = parser.parse_args(argv)
     try:
         result = (
             scaffold(args.template, args.module_id, args.title, args.output, args.pack_name)
             if args.command == "scaffold"
-            else check(args.package)
+            else ({"status": "valid", "checks": ["frontend_dependencies"],
+                   "frontend_files": frontend_package_files(args.package),
+                   "executed_supplier_code": False, "installed": False}
+                  if args.frontend_only else check(args.package))
         )
     except Exception as exc:
         # Validators may contain supplier values in their verbose repr. Only emit
